@@ -5,6 +5,8 @@
 #include <time.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <float.h>
+
 
 #define MAX_STRING_LENGTH 100000
 #define fran rand()/((double)RAND_MAX+1)
@@ -34,6 +36,6 @@ void PBC(double *x, double L);
 double inverse_cumulative_rayleigh(double p, double sigma);
 void new_vector_segment(double segment_length, double angle, double *dx, double *dy);
 double calculate_f(double *x, double *y, int neuron, double segment_vector_x, double segment_vector_y);
-bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double segment_length, double sigma_axon_angle);
+bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double segment_length, double sigma_axon_angle, double L);
 
 //************************************

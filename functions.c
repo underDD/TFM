@@ -91,6 +91,7 @@ void PBC(double *x, double L){
 }
 
 double inverse_cumulative_rayleigh(double p, double sigma){
+    // printf("p: %f, sigma: %f\n", p, sigma);
     return sigma * sqrt(-2.0 * log(1.0 - p));
 }
 

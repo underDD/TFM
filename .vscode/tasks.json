@@ -22,6 +22,27 @@
         },
         {
             "type": "shell",
+            "label": "Compile test_functions file",
+            "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
+            "args": [
+                "-Wall",
+                "-O3",
+                "-g",
+                "-I.",
+                "tests/test_functions.c",
+                "functions.c",
+                "-o",
+                "tests/test_functions.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "detail": "Compiles all the *.c files in the working directory for testing"
+        },
+        {
+            "type": "shell",
             "label": "Buid create_network file with debugging activated",
             "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
             "args": [

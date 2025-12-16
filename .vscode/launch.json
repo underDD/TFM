@@ -12,6 +12,17 @@
             "preLaunchTask": "Compile create_network file",
         },
         {
+            "name": "Tests functions.c",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/tests/test_functions.exe",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile test_functions file",
+        },
+        {
             "name": "Build and debug the create_network file",
             "type": "cppdbg",
             "request": "launch",
