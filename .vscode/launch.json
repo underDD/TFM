@@ -12,6 +12,17 @@
             "preLaunchTask": "Compile create_network file",
         },
         {
+            "name": "tune_positions",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/tune_positions.exe",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Compile tune_positions file",
+        },
+        {
             "name": "Tests functions.c",
             "type": "cppvsdbg",
             "request": "launch",
