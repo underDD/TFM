@@ -1,7 +1,6 @@
 #include "head.h"
 
 int main(){
-    printf("patata\n");
 
     // ? ############### VARIABLES ###############
 
@@ -125,7 +124,7 @@ int main(){
 
     int runs = 20;
 
-    for(int run = 0; run < runs; run++){
+    for(int run = 10; run < runs; run++){
 
         ini_ran(time(NULL) + run*1000);
         printf("Run %d/%d\n", run+1, runs);
@@ -133,8 +132,17 @@ int main(){
         sprintf(filename, "networks/adjacency_matrix_run%03d.bin", run);
         FILE *fb = fopen(filename, "wb");
         if (!fb) { perror("Error opening bin file"); exit(1); }
-        int *AdjMatrix_flat;
-        AdjMatrix_flat = (int *)malloc(N_neurons * N_neurons * sizeof(int));
+
+        int32_t N = N_neurons; // int32_t - integer with sign of 32 bites
+        int32_t M = (int32_t)((alpha_f - alpha_0)/d_alpha) + 1;
+        fwrite(&N, sizeof(int32_t), 1, fb);
+        fwrite(&M, sizeof(int32_t), 1, fb);
+        fwrite(&alpha_0, sizeof(double), 1, fb);
+        fwrite(&d_alpha, sizeof(double), 1, fb);
+
+        uint8_t *AdjMatrix_flat; // uint8_t - integer without sign of 8 bites
+        AdjMatrix_flat = (uint8_t *)malloc(N_neurons * N_neurons * sizeof(uint8_t));
+
         for(alpha = alpha_0; alpha <= alpha_f; alpha += d_alpha){
             
             for (int i = 0; i < N_neurons; i++){
@@ -236,12 +244,12 @@ int main(){
             for(int i = 0; i < N_neurons; i++){
                 for(int j = 0; j < N_neurons; j++){
                     // fprintf(adjacency_matrix, "%d", AdjMatrix[i][j]);
-                    AdjMatrix_flat[i*N_neurons + j] = AdjMatrix[i][j];
+                    AdjMatrix_flat[i*N_neurons + j] = (uint8_t)AdjMatrix[i][j];
                 }
                 // fprintf(adjacency_matrix, "\n");
             }
 
-            fwrite(AdjMatrix_flat, sizeof(int), N_neurons * N_neurons, fb);  
+            fwrite(AdjMatrix_flat, sizeof(uint8_t), N_neurons * N_neurons, fb);  
 
             // fclose(adjacency_matrix);
             // fclose(neurons_params);
