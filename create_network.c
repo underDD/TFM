@@ -11,7 +11,6 @@ int main(){
     int N_neurons;
     double soma_diameter;
     double segment_length, sigma_axon_angle; 
-    double alpha;
 
     double L; 
 
@@ -40,8 +39,8 @@ int main(){
 
     // ? ############### INITIALIZATION ###############
 
-    ini_ran(123456789);
-    // ini_ran(time(NULL));
+    // ini_ran(123456789);
+    ini_ran(time(NULL));
 
     N_neurons = 500;
     L = 2; // Box length (Everything in mm)
@@ -61,8 +60,15 @@ int main(){
     segment_length = 0.01; // Length of each segment in the axon (10 microns)
     sigma_axon_angle = sqrt(0.1); // Standard deviation of axon angle deviation (radians)
 
-    alpha = 0.01;
-    
+    double alpha_0;
+    double alpha_f;
+    double d_alpha;
+    double alpha;
+
+    alpha_0 = 0.001;
+    alpha_f = 1.0;
+    d_alpha = 0.001;
+
     printf("Dendrite diameter distribution (Gaussian): mean = %f, sigma = %f\n", d_mean, d_sigma);
     printf("Axon length distribution (Rayleigh): mean = %f, sigma = %f\n", l_mean, l_sigma);
 
@@ -99,22 +105,6 @@ int main(){
     //     exit(1);
     // } 
 
-    sprintf(filename, "networks/neurons_params_a%.2f.txt", alpha);
-    FILE *neurons_params;
-    if ((neurons_params = fopen(filename, "w")) == NULL) {
-        printf("Error opening file %s\n", filename);
-        exit(1);
-    }
-    fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
-
-    sprintf(filename, "networks/adjacency_matrix_a%.2f.txt", alpha);
-
-    FILE *adjacency_matrix;
-    if ((adjacency_matrix = fopen(filename, "w")) == NULL){
-        printf("Error opening file %s\n", filename);
-        exit(1);
-    }
-
      // ? ############### DISTRIBUTIONS TESTING ###############
 
     // int N = 10000;
@@ -136,58 +126,116 @@ int main(){
 
     // ? ############### NETWORK CREATION ###############
 
-    bool overlap;
-    for(int i = 0; i < N_neurons; i++){ // Only to place the neurons in the plane, without making links yet
-        
-        do{
-            overlap = false;
-            X[i] = randomInPR(-L/2.0, L/2.0);
-            Y[i] = randomInPR(-L/2.0, L/2.0);
-            for(int j = 0; j < i; j++){
-                double dist = sqrt_distance(X[i]-X[j], Y[i]-Y[j]);
-                if (dist < soma_diameter){
-                    overlap = true;
-                    break;
-                }
+    int number_of_intersections = 0;
+    double mean_intersections = 0.0;
+
+    for(alpha = alpha_0; alpha <= alpha_f; alpha += d_alpha){
+
+        for (int i = 0; i < N_neurons; i++){
+            for (int j = 0; j < N_neurons; j++){
+                AdjMatrix[i][j] = 0;
             }
-        }while(overlap);
+        }
 
-        dendrites_diameters[i] = d_mean + d_sigma * box_muller();
-        double u = randomInPR(0.0, 1.0);
-        axon_lengths[i] = inverse_cumulative_rayleigh(u, l_sigma);
-        fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
-    
-    }
+        // sprintf(filename, "networks/neurons_params_a%.4f.txt", alpha);
+        // FILE *neurons_params;
+        // if ((neurons_params = fopen(filename, "w")) == NULL) {
+        //     printf("Error opening file %s\n", filename);
+        //     exit(1);
+        // }
+        // fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
-    printf("Neurons placed. Creating connections...\n");
+        sprintf(filename, "networks/adjacency_matrix_a%.4f.txt", alpha);
 
-    for(int i = 0; i < N_neurons; i++){
-        double segment_vector_x, segment_vector_y;
-        double initial_angle = randomInPR(-PI, PI);
-        segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle);
-        segment_vector_y = Y[i] + (soma_diameter/2.0) * sin(initial_angle);
-        int number_of_segments = (int)(axon_lengths[i] / segment_length);
-        for(int j = 0; j<N_neurons; j++){
-            if (i != j){
-                for(int k = 0; k < number_of_segments; k++){
-                    bool intersection = new_axon_intersection(X, Y, dendrites_diameters, i, j, &segment_vector_x, &segment_vector_y, segment_length, sigma_axon_angle, L);
-                    if (intersection){
-                        if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
-                            AdjMatrix[i][j] = 1;
-                            break;
+        FILE *adjacency_matrix;
+        if ((adjacency_matrix = fopen(filename, "w")) == NULL){
+            printf("Error opening file %s\n", filename);
+            exit(1);
+        }
+
+        bool overlap;
+        for(int i = 0; i < N_neurons; i++){ // Only to place the neurons in the plane, without making links yet
+            
+            do{
+                overlap = false;
+                X[i] = randomInPR(-L/2.0, L/2.0);
+                Y[i] = randomInPR(-L/2.0, L/2.0);
+                for(int j = 0; j < i; j++){
+                    double dist = sqrt_distance(X[i]-X[j], Y[i]-Y[j]);
+                    if (dist < soma_diameter){
+                        overlap = true;
+                        break;
+                    }
+                }
+
+            }while(overlap);
+
+            do {
+                dendrites_diameters[i] = d_mean + d_sigma * box_muller();
+            } while (dendrites_diameters[i] <= 0.0);
+            double u = randomInPR(0.0, 1.0);
+            axon_lengths[i] = inverse_cumulative_rayleigh(u, sigma_rayleigh);
+            // fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
+        
+        }
+        
+        printf("Neurons placed for alpha = %.4f. Creating connections...\n", alpha);
+
+        for(int i = 0; i < N_neurons; i++){
+            double segment_vector_x, segment_vector_y;
+            double initial_angle = randomInPR(0.0, 2.0*PI);
+            segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle);
+            segment_vector_y = Y[i] + (soma_diameter/2.0) * sin(initial_angle);
+            int number_of_segments = (int)(axon_lengths[i] / segment_length);
+            for(int k = 0; k < number_of_segments; k++){
+
+                double dx,dy;
+                double angle;
+                double end_segment_x, end_segment_y;
+
+                angle = initial_angle + box_muller() * sigma_axon_angle; // Standard deviation of sigma_axon_angle radians
+                new_vector_segment(segment_length, angle, &dx, &dy);
+                // printf("Neuron %d, segment %d: angle = %f, dx = %f, dy = %f\n", i, k, angle, dx, dy);
+                end_segment_x = segment_vector_x + dx;
+                end_segment_y = segment_vector_y + dy;
+                PBC(&end_segment_x, L);
+                PBC(&end_segment_y, L);
+                initial_angle = angle;
+                
+                for(int j = 0; j<N_neurons; j++){
+                    if (i != j){
+                        bool intersection = new_axon_intersection(X, Y, dendrites_diameters, i, j, &segment_vector_x, &segment_vector_y, L, dx, dy);
+                        if (intersection){
+                            // printf("Intersection detected between neuron %d and neuron %d by segment k = %d\n", i, j, k);
+                            number_of_intersections++;
+                            if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
+                                AdjMatrix[i][j] = 1;
+                            }
                         }
                     }
                 }
-            }
-        }
-    }
 
-    for(int i = 0; i < N_neurons; i++){
-        for(int j = 0; j < N_neurons; j++){
-            fprintf(adjacency_matrix, "%d\t", AdjMatrix[i][j]);
+                segment_vector_x = end_segment_x;
+                segment_vector_y = end_segment_y;
+
+            }
+            mean_intersections += number_of_intersections;
+            number_of_intersections = 0;    
         }
-        fprintf(adjacency_matrix, "\n");
+
+        for(int i = 0; i < N_neurons; i++){
+            for(int j = 0; j < N_neurons; j++){
+                fprintf(adjacency_matrix, "%d", AdjMatrix[i][j]);
+            }
+            fprintf(adjacency_matrix, "\n");
+        }
+
+        fclose(adjacency_matrix);
+        // fclose(neurons_params);
+    
     }
+    
+    printf("Mean intersections per neuron: %f\n", mean_intersections / N_neurons);
 
     // ? #############################################
 
@@ -199,7 +247,6 @@ int main(){
         free(AdjMatrix[i]);
     }
     free(AdjMatrix);
-    fclose(neurons_params);
 
     free(X);
     free(Y);

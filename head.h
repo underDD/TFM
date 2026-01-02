@@ -35,7 +35,6 @@ double scalar_product(double x1, double y1, double x2, double y2);
 void PBC(double *x, double L);
 double inverse_cumulative_rayleigh(double p, double sigma);
 void new_vector_segment(double segment_length, double angle, double *dx, double *dy);
-double calculate_f(double *x, double *y, int neuron, double segment_vector_x, double segment_vector_y);
-bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double segment_length, double sigma_axon_angle, double L);
-
+double min_image(double d, double L);
+bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double L, double dx, double dy);
 //************************************

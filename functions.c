@@ -84,7 +84,6 @@ double scalar_product(double x1, double y1, double x2, double y2){
 }
 
 void PBC(double *x, double L){
-    if (L <= 0.0) return;
     double r = fmod(*x + L/2.0, L);   // desplazar para obtener resto en torno a 0..L
     if (r < 0.0) r += L;              // fmod puede devolver negativo
     *x = r - L/2.0;                   // volver al intervalo [-L/2, L/2)
@@ -100,38 +99,38 @@ void new_vector_segment(double segment_length, double angle, double *dx, double 
     *dy = segment_length * sin(angle);
 }
 
-double calculate_f(double *x, double *y, int neuron, double segment_vector_x, double segment_vector_y){
-
-    double cs = scalar_product(x[neuron], y[neuron], segment_vector_x, segment_vector_y);
-    double ss = scalar_product(segment_vector_x, segment_vector_y, segment_vector_x, segment_vector_y);
-    
-    return cs / ss;
+double min_image(double d, double L){
+    if (d >  0.5*L) d -= L;
+    if (d < -0.5*L) d += L;
+    return d;
 }
 
-bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double segment_length, double sigma_axon_angle, double L){
+bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double L, double dx, double dy){
 
-    double dx,dy;
-    double angle;
-    double end_segment_x, end_segment_y;
+    double cx, cy;
 
-    angle = box_muller() * sigma_axon_angle; // Standard deviation of sigma_axon_angle radians
-    new_vector_segment(segment_length, angle, &dx, &dy);
+    cx = x[target_neuron] - *segment_vector_x;
+    cy = y[target_neuron] - *segment_vector_y;
+    cx = min_image(cx, L);
+    cy = min_image(cy, L);
 
-    double f = calculate_f(x, y, target_neuron, dx, dy);
+    double f_raw = (cx * dx + cy * dy) / (dx * dx + dy * dy);
+    double f = f_raw;
+    if (f < 0.0) f = 0.0;
+    if (f > 1.0) f = 1.0;
+    // printf("f_raw: %f, f: %f\n", f_raw, f);
+
     double gx, gy;
-    
-    end_segment_x = *segment_vector_x + dx;
-    end_segment_y = *segment_vector_y + dy;
-    PBC(&end_segment_x, L);
-    PBC(&end_segment_y, L);
 
-    gx = *segment_vector_x + f * dx;
-    gy = *segment_vector_y + f * dy;
+    gx = cx - f * dx;
+    gy = cy - f * dy;
 
-    double distance = sqrt_distance(gx-x[target_neuron], gy-y[target_neuron]);
+    double distance = sqrt_distance(gx, gy);
 
-    if (distance <= dendrites_diameter[target_neuron]/2.0)
+    if (distance <= dendrites_diameter[target_neuron]*0.5){
         return true;
-    
+    }
+
     return false;
+
 }
