@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <float.h>
+#include <stdint.h>
 
 
 #define MAX_STRING_LENGTH 100000
