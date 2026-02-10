@@ -97,14 +97,14 @@ int main(){
 
     else {
 
-        int gaussian_clusters = 4;
+        int gaussian_clusters = 3;
         int neurons_in_cluster = 50;
         double mean_x[] = {-0.5, 0.5, 0.5, -0.5};
         double mean_y[] = {0.5, 0.5, -0.5, -0.5};
         double sigma_x[] = {0.1, 0.1, 0.1, 0.1};
         double sigma_y[] = {0.1, 0.1, 0.1, 0.1};
 
-        sprintf(filename, "agrupation/neurons_params_agg%d_ngauss%d_nic%d.txt", ag, gaussian_clusters, neurons_in_cluster);
+        sprintf(filename, "agrupation/neurons_params_agg%d_ng%d_nic%d_m%.2f_s%.2f.txt", ag, gaussian_clusters, neurons_in_cluster, fabs(mean_x[0]), sigma_x[0]);
         FILE *neurons_params;
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);

@@ -19,6 +19,8 @@ int main(){
 
     char filename[MAX_STRING_LENGTH];
 
+    bool aggregation;
+
     int **AdjMatrix = malloc(NMAX * sizeof(int *));
     if (AdjMatrix == NULL) {
         perror("Error allocating memory for AdjMatrix");
@@ -67,6 +69,8 @@ int main(){
     alpha_0 = 0.001;
     alpha_f = 1.0;
     d_alpha = 0.001;
+
+    aggregation = true; // true for aggregation, false for no aggregation
 
     printf("Dendrite diameter distribution (Gaussian): mean = %f, sigma = %f\n", d_mean, d_sigma);
     printf("Axon length distribution (Rayleigh): mean = %f, sigma = %f\n", l_mean, l_sigma);
@@ -129,7 +133,7 @@ int main(){
         ini_ran(time(NULL) + run*1000);
         printf("Run %d/%d\n", run+1, runs);
 
-        sprintf(filename, "networks/adjacency_matrix_run%03d.bin", run);
+        sprintf(filename, "networks/adjacency_matrix_ng1_run%03d.bin", run);
         FILE *fb = fopen(filename, "wb");
         if (!fb) { perror("Error opening bin file"); exit(1); }
 
@@ -169,35 +173,55 @@ int main(){
             //     printf("Error opening file %s\n", filename);
             //     exit(1);
             // }
-
-            bool overlap;
-            for(int i = 0; i < N_neurons; i++){ // Only to place the neurons in the plane, without making links yet
-                
-                do{
-                    overlap = false;
-                    X[i] = randomInPR(-L/2.0, L/2.0);
-                    Y[i] = randomInPR(-L/2.0, L/2.0);
-                    for(int j = 0; j < i; j++){
-                        double dist = sqrt_distance(X[i]-X[j], Y[i]-Y[j]);
-                        if (dist < soma_diameter){
-                            overlap = true;
-                            break;
-                        }
+            if (aggregation){ // This is in the case of aggregation, we read the positions and parameters from the file created in tune_positions.c
+                FILE *neurons_params;
+                char filename_np[MAX_STRING_LENGTH];
+                sprintf(filename_np, "agrupation/neurons_params_agg1_ng1_nic50_m0.50_s0.10.txt");
+                if ((neurons_params = fopen(filename_np, "r")) == NULL) {
+                    printf("Error opening file %s\n", filename_np);
+                    exit(1);
+                }
+                char header[MAX_STRING_LENGTH];
+                fgets(header, sizeof(header), neurons_params); // Skip header line
+                for(int i = 0; i < N_neurons; i++){
+                    if (fscanf(neurons_params, "%lf\t%lf\t%lf\t%lf\t%lf\n", &X[i], &Y[i], &soma_diameter, &dendrites_diameters[i], &axon_lengths[i]) != 5) {
+                        printf("Error reading line %d from file %s\n", i+2, filename_np);
+                        exit(1);
                     }
+                }
+                fclose(neurons_params);
+                printf("Neurons parameters loaded for alpha = %.4f. Creating connections... (Run %d/%d)\n", alpha, run+1, runs);
+            }
+            else{
+                bool overlap;
+                for(int i = 0; i < N_neurons; i++){ // Only to place the neurons in the plane, without making links yet
+                    
+                    do{
+                        overlap = false;
+                        X[i] = randomInPR(-L/2.0, L/2.0);
+                        Y[i] = randomInPR(-L/2.0, L/2.0);
+                        for(int j = 0; j < i; j++){
+                            double dist = sqrt_distance(X[i]-X[j], Y[i]-Y[j]);
+                            if (dist < soma_diameter){
+                                overlap = true;
+                                break;
+                            }
+                        }
 
-                }while(overlap);
+                    }while(overlap);
 
-                do {
-                    dendrites_diameters[i] = d_mean + d_sigma * box_muller();
-                } while (dendrites_diameters[i] <= 0.0);
-                double u = randomInPR(0.0, 1.0);
-                axon_lengths[i] = inverse_cumulative_rayleigh(u, sigma_rayleigh);
-                // fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
-            
+                    do {
+                        dendrites_diameters[i] = d_mean + d_sigma * box_muller();
+                    } while (dendrites_diameters[i] <= 0.0);
+                    double u = randomInPR(0.0, 1.0);
+                    axon_lengths[i] = inverse_cumulative_rayleigh(u, sigma_rayleigh);
+                    // fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
+                
+                }
+                printf("Neurons placed for alpha = %.4f. Creating connections... (Run %d/%d)\n", alpha, run+1, runs);
             }
             
-
-            printf("Neurons placed for alpha = %.4f. Creating connections... (Run %d/%d)\n", alpha, run+1, runs);
+    
             
             for(int i = 0; i < N_neurons; i++){
                 double segment_vector_x, segment_vector_y;
