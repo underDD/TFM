@@ -133,7 +133,7 @@ int main(){
         ini_ran(time(NULL) + run*1000);
         printf("Run %d/%d\n", run+1, runs);
 
-        sprintf(filename, "networks/adjacency_matrix_ng3_run%03d.bin", run);
+        sprintf(filename, "networks/adjacency_matrix_ng4_run%03d.bin", run);
         FILE *fb = fopen(filename, "wb");
         if (!fb) { perror("Error opening bin file"); exit(1); }
 
@@ -150,7 +150,7 @@ int main(){
         if (aggregation){ // This is in the case of aggregation, we read the positions and parameters from the file created in tune_positions.c
             FILE *neurons_params;
             char filename_np[MAX_STRING_LENGTH];
-            sprintf(filename_np, "agrupation/neurons_params_agg1_ng3_nic50_m0.50_s0.10.txt");
+            sprintf(filename_np, "agrupation/neurons_params_agg1_ng4_nic50_m0.50_s0.10.txt");
             if ((neurons_params = fopen(filename_np, "r")) == NULL) {
                 printf("Error opening file %s\n", filename_np);
                 exit(1);
