@@ -49,12 +49,12 @@ int main(){
     
     soma_diameter = 0.015; // Fixed soma diameter (15 microns)
     
-    d_mean = 0.3; // Mean of dendrite diameter distribution (Gaussian)
-    d_sigma = sqrt(0.04); // Standard deviation of dendrite diameter distribution (Gaussian)
+    d_mean = 0.2; // Mean of dendrite diameter distribution (Gaussian) Typical = 0.3 
+    d_sigma = sqrt(0.03); // Standard deviation of dendrite diameter distribution (Gaussian) Typical = 0.04
     
     double sigma_rayleigh;
     l_mean = 1.0;
-    l_sigma = sqrt(0.8); // Sigma parameter for Rayleigh distribution with given mean
+    l_sigma = sqrt(0.6); // Sigma parameter for Rayleigh distribution with given mean Typical = 0.8
     // sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
     sigma_rayleigh = l_sigma*sqrt(2/(4 - PI)); // Recalculate sigma from desired standard deviation
     l_mean = sigma_rayleigh*sqrt(PI/2.0); // Calculate mean from sigma
@@ -66,11 +66,11 @@ int main(){
     double d_alpha;
     double alpha;
 
-    alpha_0 = 0.001;
-    alpha_f = 1.0;
-    d_alpha = 0.001;
+    alpha_0 = 0.0001;
+    alpha_f = 0.1;
+    d_alpha = 0.0001;
 
-    aggregation = true; // true for aggregation, false for no aggregation
+    aggregation = false; // true for aggregation, false for no aggregation
 
     printf("Dendrite diameter distribution (Gaussian): mean = %f, sigma = %f\n", d_mean, d_sigma);
     printf("Axon length distribution (Rayleigh): mean = %f, sigma = %f\n", l_mean, l_sigma);
@@ -126,14 +126,14 @@ int main(){
     int number_of_intersections = 0;
     double mean_intersections = 0.0;
 
-    int runs = 20;
+    int runs = 1; // Number of runs to average results (with different random seeds)
 
     for(int run = 0; run < runs; run++){
 
         ini_ran(time(NULL) + run*1000);
         printf("Run %d/%d\n", run+1, runs);
 
-        sprintf(filename, "networks/adjacency_matrix_ng4_run%03d.bin", run);
+        sprintf(filename, "networks/adjacency_matrix_test_run%03d.bin", run);
         FILE *fb = fopen(filename, "wb");
         if (!fb) { perror("Error opening bin file"); exit(1); }
 
