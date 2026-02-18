@@ -5,3 +5,14 @@ ng3_run000_txt/
 ng4_run000_txt/
 test_run000_txt/
 random_run000_txt/
+adjacency_matrix_agg_nc25_s0.08_txt/
+adjacency_matrix_agg_nc25_s0.05_txt/
+adjacency_matrix_agg_nc25_s0.25_txt/
+adjacency_matrix_agg_nc25_s0.30_txt/
+adjacency_matrix_agg_nc25_s0.10_txt/
+adjacency_matrix_agg_nc25_s0.20_txt/
+configurations/
+adjacency_matrix_agg_nc50_s0.10_txt/
+adjacency_matrix_random_l0.50_txt/
+
+

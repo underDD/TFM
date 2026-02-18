@@ -19,8 +19,6 @@ int main(){
 
     char filename[MAX_STRING_LENGTH];
 
-    bool aggregation;
-
     int **AdjMatrix = malloc(NMAX * sizeof(int *));
     if (AdjMatrix == NULL) {
         perror("Error allocating memory for AdjMatrix");
@@ -72,8 +70,6 @@ int main(){
     alpha_0 = 0.1;
     alpha_f = 0.21;
     d_alpha = 0.01;
-
-    aggregation = false; // true for aggregation, false for no aggregation
 
     printf("Dendrite diameter distribution (Gaussian): mean = %f, sigma = %f\n", d_mean, d_sigma);
     printf("Axon length distribution (Rayleigh): mean = %f, sigma = %f\n", l_mean, l_sigma);
@@ -136,7 +132,7 @@ int main(){
         ini_ran(time(NULL) + run*1000);
         printf("Run %d/%d\n", run+1, runs);
 
-        sprintf(filename, "study_dynamics/adjacency_matrix_agg_nc25_s0.20.bin", run);
+        sprintf(filename, "study_dynamics/adjacency_matrix_agg_nc25_s0.25.bin");
         FILE *fb = fopen(filename, "wb");
         if (!fb) { perror("Error opening bin file"); exit(1); }
 
@@ -153,7 +149,7 @@ int main(){
         FILE *neurons_params;
         char filename_np[MAX_STRING_LENGTH];
 
-        sprintf(filename_np, "configurations/neurons_params_agg_nc25_s0.10.txt");
+        sprintf(filename_np, "configurations/neurons_params_agg_nc25_s0.25.txt");
 
         if ((neurons_params = fopen(filename_np, "r")) == NULL) {
                 printf("Error opening file %s\n", filename_np);

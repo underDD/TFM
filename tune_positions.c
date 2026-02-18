@@ -44,7 +44,7 @@ int main(){
     // l_mean = sigma_rayleigh*sqrt(PI/2.0); // Calculate mean from sigma
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
 
-    int agg = 0; // 0 no aggragation, 1 aggregation
+    int agg = 1; // 0 no aggragation, 1 aggregation
 
     printf("Dendrite diameter distribution (Gaussian): mean = %f, sigma = %f\n", d_mean, d_sigma);
     printf("Axon length distribution (Rayleigh): mean = %f, sigma = %f\n", l_mean, l_sigma);
@@ -99,12 +99,12 @@ int main(){
 
     else {
 
-        int n_centers = 50;
+        int n_centers = 25;
         int neurons_in_center = (int)(N_neurons / n_centers);
         double mean_x, mean_y;
         double sigma_x, sigma_y, base_sigma;
 
-        base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
+        base_sigma = 0.25; // Base sigma for the Gaussian distribution of the centers of aggregation
 
         sprintf(filename, "configurations/neurons_params_agg_nc%d_s%.2f.txt", n_centers, base_sigma);
         FILE *neurons_params;
