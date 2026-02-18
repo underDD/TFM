@@ -37,13 +37,14 @@ int main(){
     d_sigma = sqrt(0.04); // Standard deviation of dendrite diameter distribution (Gaussian)
     
     double sigma_rayleigh;
-    l_mean = 1.0;
-    l_sigma = sqrt(0.8); // Sigma parameter for Rayleigh distribution with given mean
-    // sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
-    sigma_rayleigh = l_sigma*sqrt(2/(4 - PI)); // Recalculate sigma from desired standard deviation
-    l_mean = sigma_rayleigh*sqrt(PI/2.0); // Calculate mean from sigma
+    l_mean = 0.5; // Mean of axon length distribution (Rayleigh) (mm)
+    // l_sigma = sqrt(0.8); // Sigma parameter for Rayleigh distribution with given mean
+    sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
+    // sigma_rayleigh = l_sigma*sqrt(2/(4 - PI)); // Recalculate sigma from desired standard deviation
+    // l_mean = sigma_rayleigh*sqrt(PI/2.0); // Calculate mean from sigma
+    l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
 
-    int ag = 1; // 0 no aggragation, 1 aggregation
+    int agg = 0; // 0 no aggragation, 1 aggregation
 
     printf("Dendrite diameter distribution (Gaussian): mean = %f, sigma = %f\n", d_mean, d_sigma);
     printf("Axon length distribution (Rayleigh): mean = %f, sigma = %f\n", l_mean, l_sigma);
@@ -59,9 +60,9 @@ int main(){
         axon_lengths[i] = 0.0;
     }
 
-    if (ag == 0){
+    if (agg == 0){
 
-        sprintf(filename, "agrupation/neurons_params_agg%d.txt", ag);
+        sprintf(filename, "configurations/neurons_params_random_l%.2lf.txt", l_mean);
         FILE *neurons_params;
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);
@@ -93,67 +94,72 @@ int main(){
             fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
         }
         fclose(neurons_params);
+
     }
 
     else {
 
-        int gaussian_clusters = 3;
-        int neurons_in_cluster = 50;
-        double mean_x[] = {-0.5, 0.5, 0.5, -0.5};
-        double mean_y[] = {0.5, 0.5, -0.5, -0.5};
-        double sigma_x[] = {0.1, 0.1, 0.1, 0.1};
-        double sigma_y[] = {0.1, 0.1, 0.1, 0.1};
+        int n_centers = 50;
+        int neurons_in_center = (int)(N_neurons / n_centers);
+        double mean_x, mean_y;
+        double sigma_x, sigma_y, base_sigma;
 
-        sprintf(filename, "agrupation/neurons_params_agg%d_ng%d_nic%d_m%.2f_s%.2f.txt", ag, gaussian_clusters, neurons_in_cluster, fabs(mean_x[0]), sigma_x[0]);
+        base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
+
+        sprintf(filename, "configurations/neurons_params_agg_nc%d_s%.2f.txt", n_centers, base_sigma);
         FILE *neurons_params;
+
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);
             exit(1);
         }
+
         fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
-        int n_clustered = gaussian_clusters * neurons_in_cluster;
+        for (int c = 0; c < n_centers; c++) {
+            // Here I define the parameters of the Gaussian distribution of the centar of aggregation. sigma = 0.1 + little variation
+            sigma_x = sigma_y = base_sigma + randomInPR(-0.02, 0.02); 
+            mean_x = randomInPR(-L/2.0, L/2.0);
+            mean_y = randomInPR(-L/2.0, L/2.0);
+            for (int n = 0; n < neurons_in_center; n++) {
 
-        for (int i = 0; i < N_neurons; i++) {
+                bool overlap;
 
-            int c = -1;
-            if (i < n_clustered) c = i / neurons_in_cluster;  // 0..gaussian_clusters-1
+                do {
 
-            bool overlap;
-            do {
-                overlap = false;
+                    overlap = false;
 
-                if (c >= 0) {
-                    X[i] = mean_x[c] + sigma_x[c] * box_muller();
-                    Y[i] = mean_y[c] + sigma_y[c] * box_muller();
-                    PBC(&X[i], L);
-                    PBC(&Y[i], L);
-                } else {
-                    X[i] = randomInPR(-L/2.0, L/2.0);
-                    Y[i] = randomInPR(-L/2.0, L/2.0);
+                    X[c*neurons_in_center + n] = mean_x + sigma_x * box_muller();
+                    Y[c*neurons_in_center + n] = mean_y + sigma_y * box_muller();
+                    PBC(&X[c*neurons_in_center + n], L);
+                    PBC(&Y[c*neurons_in_center + n], L);
+                    
+                    for (int j = 0; j < c*neurons_in_center + n; j++) {
+
+                        double dx = X[c*neurons_in_center + n] - X[j]; dx = min_image(dx, L);
+                        double dy = Y[c*neurons_in_center + n] - Y[j]; dy = min_image(dy, L);
+                        double dist = sqrt_distance(dx, dy);
+
+                        if (dist < soma_diameter) { overlap = true; break; }
+                    }
+
+                } while (overlap);
+
+                // resto de parámetros
+                do { 
+                    dendrites_diameters[c*neurons_in_center + n] = d_mean + d_sigma * box_muller(); 
                 }
+                while (dendrites_diameters[c*neurons_in_center + n] <= 0.0);
 
-                for (int j = 0; j < i; j++) {
-                    // si usas PBC, usa mínima imagen aquí también
-                    double dx = X[i] - X[j]; dx = min_image(dx, L);
-                    double dy = Y[i] - Y[j]; dy = min_image(dy, L);
-                    double dist = sqrt_distance(dx, dy);
+                double u = randomInPR(0.0, 1.0);
+                axon_lengths[c*neurons_in_center + n] = inverse_cumulative_rayleigh(u, sigma_rayleigh);
 
-                    if (dist < soma_diameter) { overlap = true; break; }
-                }
+                fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n",
+                        X[c*neurons_in_center + n], Y[c*neurons_in_center + n], soma_diameter, dendrites_diameters[c*neurons_in_center + n], axon_lengths[c*neurons_in_center + n]);
+            }   
+        } 
 
-            } while (overlap);
-
-            // resto de parámetros
-            do { dendrites_diameters[i] = d_mean + d_sigma * box_muller(); }
-            while (dendrites_diameters[i] <= 0.0);
-
-            double u = randomInPR(0.0, 1.0);
-            axon_lengths[i] = inverse_cumulative_rayleigh(u, sigma_rayleigh);
-
-            fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n",
-                    X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
-        }
+        fclose(neurons_params);
     }
 
     return 0;       

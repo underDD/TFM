@@ -53,11 +53,14 @@ int main(){
     d_sigma = sqrt(0.03); // Standard deviation of dendrite diameter distribution (Gaussian) Typical = 0.04
     
     double sigma_rayleigh;
-    l_mean = 1.0;
-    l_sigma = sqrt(0.6); // Sigma parameter for Rayleigh distribution with given mean Typical = 0.8
-    // sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
-    sigma_rayleigh = l_sigma*sqrt(2/(4 - PI)); // Recalculate sigma from desired standard deviation
-    l_mean = sigma_rayleigh*sqrt(PI/2.0); // Calculate mean from sigma
+    l_mean = 0.5; // Mean of axon length distribution (Rayleigh) (mm)
+    // l_sigma = sqrt(0.8); // Sigma parameter for Rayleigh distribution with given mean
+    sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
+    // sigma_rayleigh = l_sigma*sqrt(2/(4 - PI)); // Recalculate sigma from desired standard deviation
+    // l_mean = sigma_rayleigh*sqrt(PI/2.0); // Calculate mean from sigma
+    l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
+
+
     segment_length = 0.01; // Length of each segment in the axon (10 microns)
     sigma_axon_angle = sqrt(0.1); // Standard deviation of axon angle deviation (radians)
 
@@ -66,9 +69,9 @@ int main(){
     double d_alpha;
     double alpha;
 
-    alpha_0 = 0.0001;
-    alpha_f = 0.1;
-    d_alpha = 0.0001;
+    alpha_0 = 0.1;
+    alpha_f = 0.21;
+    d_alpha = 0.01;
 
     aggregation = false; // true for aggregation, false for no aggregation
 
@@ -133,7 +136,7 @@ int main(){
         ini_ran(time(NULL) + run*1000);
         printf("Run %d/%d\n", run+1, runs);
 
-        sprintf(filename, "networks/adjacency_matrix_test_run%03d.bin", run);
+        sprintf(filename, "study_dynamics/adjacency_matrix_agg_nc25_s0.20.bin", run);
         FILE *fb = fopen(filename, "wb");
         if (!fb) { perror("Error opening bin file"); exit(1); }
 
@@ -147,11 +150,12 @@ int main(){
         uint8_t *AdjMatrix_flat; // uint8_t - integer without sign of 8 bites
         AdjMatrix_flat = (uint8_t *)malloc(N_neurons * N_neurons * sizeof(uint8_t));
 
-        if (aggregation){ // This is in the case of aggregation, we read the positions and parameters from the file created in tune_positions.c
-            FILE *neurons_params;
-            char filename_np[MAX_STRING_LENGTH];
-            sprintf(filename_np, "agrupation/neurons_params_agg1_ng4_nic50_m0.50_s0.10.txt");
-            if ((neurons_params = fopen(filename_np, "r")) == NULL) {
+        FILE *neurons_params;
+        char filename_np[MAX_STRING_LENGTH];
+
+        sprintf(filename_np, "configurations/neurons_params_agg_nc25_s0.10.txt");
+
+        if ((neurons_params = fopen(filename_np, "r")) == NULL) {
                 printf("Error opening file %s\n", filename_np);
                 exit(1);
             }
@@ -163,68 +167,13 @@ int main(){
                     exit(1);
                 }
             }
-            fclose(neurons_params);
-            // printf("Neurons parameters loaded for alpha = %.4f. Creating connections... (Run %d/%d)\n", alpha, run+1, runs);
-        }
-        else{
-            bool overlap;
-            for(int i = 0; i < N_neurons; i++){ // Only to place the neurons in the plane, without making links yet
-                
-                do{
-                    overlap = false;
-                    X[i] = randomInPR(-L/2.0, L/2.0);
-                    Y[i] = randomInPR(-L/2.0, L/2.0);
-                    for(int j = 0; j < i; j++){
-                        double dist = sqrt_distance(X[i]-X[j], Y[i]-Y[j]);
-                        if (dist < soma_diameter){
-                            overlap = true;
-                            break;
-                        }
-                    }
-
-                }while(overlap);
-
-                do {
-                    dendrites_diameters[i] = d_mean + d_sigma * box_muller();
-                } while (dendrites_diameters[i] <= 0.0);
-                double u = randomInPR(0.0, 1.0);
-                axon_lengths[i] = inverse_cumulative_rayleigh(u, sigma_rayleigh);
-                // fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
-            
-            }
-            // printf("Neurons placed for alpha = %.4f. Creating connections... (Run %d/%d)\n", alpha, run+1, runs);
-        }
+        fclose(neurons_params);
 
         for(alpha = alpha_0; alpha <= alpha_f; alpha += d_alpha){
 
-            printf("Creating connections for alpha = %.4f... (Run %d/%d)\n", alpha, run+1, runs);
-            
-            // for (int i = 0; i < N_neurons; i++){
-            //     for (int j = 0; j < N_neurons; j++){
-            //         AdjMatrix_flat[i*N_neurons + j] = 0;
-            //         AdjMatrix[i][j] = 0;
-                    
-            //     }
-            // }
+            printf("Creating connections for alpcha = %.4f... (Run %d/%d)\n", alpha, run+1, runs);
 
             memset(AdjMatrix_flat, 0, N_neurons * N_neurons * sizeof(uint8_t));
-            // printf("Patata\n");
-
-            // sprintf(filename, "networks/neurons_params_a%.4f.txt", alpha);
-            // FILE *neurons_params;
-            // if ((neurons_params = fopen(filename, "w")) == NULL) {
-            //     printf("Error opening file %s\n", filename);
-            //     exit(1);
-            // }
-            // fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
-
-            // sprintf(filename, "networks/adjacency_matrix_a%.4f.txt", alpha);
-
-            // FILE *adjacency_matrix;
-            // if ((adjacency_matrix = fopen(filename, "w")) == NULL){
-            //     printf("Error opening file %s\n", filename);
-            //     exit(1);
-            // }
             
             for(int i = 0; i < N_neurons; i++){
                 double segment_vector_x, segment_vector_y;
@@ -268,18 +217,7 @@ int main(){
                 number_of_intersections = 0;    
             }
 
-            // for(int i = 0; i < N_neurons; i++){
-            //     for(int j = 0; j < N_neurons; j++){
-            //         // fprintf(adjacency_matrix, "%d", AdjMatrix[i][j]);
-            //         AdjMatrix_flat[i*N_neurons + j] = (uint8_t)AdjMatrix[i][j];
-            //     }
-            //     // fprintf(adjacency_matrix, "\n");
-            // }
-
             fwrite(AdjMatrix_flat, sizeof(uint8_t), N_neurons * N_neurons, fb);  
-
-            // fclose(adjacency_matrix);
-            // fclose(neurons_params);
         
         }
 
