@@ -1,6 +1,6 @@
 #include "3D_head.h"
 
-int main() {
+int main(int argc, char *argv[]) {
     // Example usage of the functions
 
     ini_ran(time(NULL));

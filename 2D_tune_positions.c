@@ -29,7 +29,7 @@ int main(){
     d_mean = 0.15; // Mean of dendrite diameter distribution (Gaussian) (300 microns)
     d_sigma = 0.02; // Standard deviation of dendrite diameter distribution (Gaussian) (40 microns)
  
-    l_mean = 1; // Mean of axon length distribution (Rayleigh) (mm)
+    l_mean = 1.; // Mean of axon length distribution (Rayleigh) (mm)
     sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
 
@@ -43,7 +43,7 @@ int main(){
     dendrites_diameters = (double *)malloc(N_neurons * sizeof(double));
     axon_lengths = (double *)malloc(N_neurons * sizeof(double));
 
-    agg = 0; // Control variable for aggregation (0 no aggregation, 1 aggregation)
+    agg = 1; // Control variable for aggregation (0 no aggregation, 1 aggregation)
 
     if (agg == 0){
 
@@ -122,7 +122,7 @@ int main(){
         double mean_x, mean_y;
         double sigma_x, sigma_y, base_sigma, variation_sigma;
 
-        base_sigma = 0.05; // Base sigma for the Gaussian distribution of the centers of aggregation
+        base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
 
         sprintf(filename, "2D_initial_configurations/2D_neurons_params_agg_nc%d_s%.2f_L%.1f_rho%.0f_l%.2f.txt", n_centers, base_sigma, L, rho, l_mean);

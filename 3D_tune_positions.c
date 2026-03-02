@@ -29,7 +29,7 @@ int main(){
     d_mean = 0.15; // mean of dendrite diameter distribution (Gaussian) (300 microns)
     d_sigma = 0.02; // standard deviation of dendrite diameter distribution (Gaussian) (20 microns)
 
-    l_mean = 1; // mean of axon length distribution (Rayleigh) (mm)
+    l_mean = 1.; // mean of axon length distribution (Rayleigh) (mm)
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
     
@@ -45,7 +45,7 @@ int main(){
     dendrites_diameters = (double *)malloc(N * sizeof(double));
     axon_lengths = (double *)malloc(N * sizeof(double));
 
-    agg = 0; // Control variable for aggregation (0 no aggregation, 1 aggregation)
+    agg = 1; // Control variable for aggregation (0 no aggregation, 1 aggregation)
 
     if (agg == 0){
         
@@ -122,15 +122,15 @@ int main(){
         fclose(neurons_params);
 
     }else {
-        int n_centers = (int)(N * 0.1); // Number of aggregation centers (10% of total neurons)
+        int n_centers = (int)(N * 0.1/6); // Number of aggregation centers (10% of total neurons)
         int neurons_in_center = (int)(N / n_centers); // Number of neurons in each center
         double mean_x, mean_y, mean_z, sigma_x, sigma_y, sigma_z;
         double base_sigma, variation_sigma;
 
-        base_sigma = 0.05; // Base sigma for the Gaussian distribution of the centers of aggregation
+        base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
 
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_L%.1lf_rho%.0f_l%.2lf.txt", L, rho, l_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_nc%d_s%.2lf_L%.1lf_rho%.0f_l%.2lf.txt", n_centers, base_sigma, L, rho, l_mean);
         FILE *neurons_params;
 
         if ((neurons_params = fopen(filename, "w")) == NULL) {

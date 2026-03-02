@@ -1,6 +1,6 @@
 #include "2D_head.h"
 
-int main(){
+int main(int argc, char *argv[]) {
 
     ini_ran(time(NULL));
 
@@ -184,6 +184,7 @@ int main(){
         }
         fprintf(adj_matrix_file, "\n");
     }
+    
     fclose(adj_matrix_file);
 
     free(X);
