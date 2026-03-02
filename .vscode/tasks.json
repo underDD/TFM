@@ -2,16 +2,16 @@
     "tasks": [
         {
             "type": "shell",
-            "label": "Compile create_network file",
+            "label": "Compile 2D_create_network file",
             "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
             "args": [
                 "-Wall",
                 "-O3",
                 "-g",
-                "create_network.c",
-                "functions.c",
+                "2D_create_network.c",
+                "2D_functions.c",
                 "-o",
-                "create_network.exe"
+                "2D_create_network.exe"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -22,16 +22,56 @@
         },
         {
             "type": "shell",
-            "label": "Compile tune_positions file",
+            "label": "Compile 2D_tune_positions file",
             "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
             "args": [
                 "-Wall",
                 "-O3",
                 "-g",
-                "tune_positions.c",
-                "functions.c",
+                "2D_tune_positions.c",
+                "2D_functions.c",
                 "-o",
-                "tune_positions.exe"
+                "2D_tune_positions.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "detail": "Compiles all the *.c files in the working directory"
+        },
+        {
+            "type": "shell",
+            "label": "Compile 3D_create_network file",
+            "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
+            "args": [
+                "-Wall",
+                "-O3",
+                "-g",
+                "3D_create_network.c",
+                "3D_functions.c",
+                "-o",
+                "3D_create_network.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "detail": "Compiles all the *.c files in the working directory"
+        },
+        {
+            "type": "shell",
+            "label": "Compile 3D_tune_positions file",
+            "command": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
+            "args": [
+                "-Wall",
+                "-O3",
+                "-g",
+                "3D_tune_positions.c",
+                "3D_functions.c",
+                "-o",
+                "3D_tune_positions.exe"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
