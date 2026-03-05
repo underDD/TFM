@@ -1,7 +1,11 @@
 #include "3D_head.h"
 
 int main(int argc, char *argv[]) {
-    // Example usage of the functions
+
+    if (argc < 2){
+        printf("Usage: %s alpha\n", argv[0]);
+        return 1;
+    }
 
     ini_ran(time(NULL));
 
@@ -28,7 +32,7 @@ int main(int argc, char *argv[]) {
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
-    sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L2.0_rho300_l1.00.txt");
+    sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L2.0_rho125_l1.00.txt");
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -85,7 +89,8 @@ int main(int argc, char *argv[]) {
 
     fclose(neurons_params);
 
-    alpha = 0.2; // ! CONNECTION PROBABILITY
+    // alpha = 0.2; 
+    alpha = atof(argv[1]); // ! CONNECTION PROBABILITY
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
@@ -120,6 +125,11 @@ int main(int argc, char *argv[]) {
     
     uint8_t *AdjMatrix_flat = (uint8_t *)malloc(N * N * sizeof(uint8_t));
     memset(AdjMatrix_flat, 0, N * N * sizeof(uint8_t));
+
+    int trials, links;
+
+    trials = 0; 
+    links = 0;
 
     for(int i = 0; i < N; i++){
         printf("Creating connections for neuron %d/%d\r", i+1, N);
@@ -167,8 +177,10 @@ int main(int argc, char *argv[]) {
                 if (i != j){
                     if(AdjMatrix_flat[i*N + j] == 0){
                         if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, dx, dy, dz)){
+                            trials ++;
                             if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
                                 AdjMatrix_flat[i*N + j] = 1;
+                                links ++;
                             }
                         }
                     }
@@ -193,6 +205,10 @@ int main(int argc, char *argv[]) {
     }
 
     fclose(axon_simulation);
+
+    printf("\nTrials (intersections) = %d\n", trials);
+    printf("Links created          = %d\n", links);
+    printf("Acceptance ratio       = %.6f\n", (double)links / (double)trials);
 
     // Save adjacency matrix to file
     FILE *adj_matrix_file;

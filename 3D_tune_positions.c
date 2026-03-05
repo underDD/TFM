@@ -21,13 +21,13 @@ int main(){
     int agg; // 0 no aggragation, 1 aggregation
 
     L = 2.0;
-    rho = 300; // neurons per mm^3
+    rho = 125; // neurons per mm^3
     N = (int)(rho * L * L * L);
 
     soma_diameter = 0.015; // 15 microns
 
-    d_mean = 0.15; // mean of dendrite diameter distribution (Gaussian) (300 microns)
-    d_sigma = 0.02; // standard deviation of dendrite diameter distribution (Gaussian) (20 microns)
+    d_mean = 0.3; // mean of dendrite diameter distribution (Gaussian) (300 microns)
+    d_sigma = 0.04; // standard deviation of dendrite diameter distribution (Gaussian) (20 microns)
 
     l_mean = 1.; // mean of axon length distribution (Rayleigh) (mm)
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
@@ -122,7 +122,7 @@ int main(){
         fclose(neurons_params);
 
     }else {
-        int n_centers = (int)(N * 0.1/6); // Number of aggregation centers (10% of total neurons)
+        int n_centers = (int)(N * 0.1/2); // Number of aggregation centers (10% of total neurons)
         int neurons_in_center = (int)(N / n_centers); // Number of neurons in each center
         double mean_x, mean_y, mean_z, sigma_x, sigma_y, sigma_z;
         double base_sigma, variation_sigma;
@@ -166,7 +166,7 @@ int main(){
         fprintf(neurons_params, "sigma_pol = %.3lf\n", sigma_pol);
         fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
         fprintf(neurons_params, "nc = %d\n", n_centers);
-        fprintf(neurons_params, "s = %.3lf\n", base_sigma);
+        fprintf(neurons_params, "base_sigma = %.3lf\n", base_sigma);
 
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 

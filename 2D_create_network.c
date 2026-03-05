@@ -2,10 +2,16 @@
 
 int main(int argc, char *argv[]) {
 
+    if (argc < 2){
+        printf("Usage: %s alpha\n", argv[0]);
+        return 1;
+    }
+
+    
     ini_ran(time(NULL));
-
+    
     double *X, *Y;
-
+    
     double L, rho; int N_neurons;
     double soma_diameter;
     double d_mean, d_sigma;
@@ -13,7 +19,7 @@ int main(int argc, char *argv[]) {
     double segment_length, sigma_axon_angle;
     int n_centers;
     double base_sigma;
-    double alpha; 
+    double alpha;
 
     double *somas;
     double *dendrites_diameters;
@@ -27,7 +33,7 @@ int main(int argc, char *argv[]) {
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
-    sprintf(filename, "2D_initial_configurations/2D_neurons_params_random_L2.0_rho300_l1.00.txt");
+    sprintf(filename, "2D_initial_configurations/2D_neurons_params_random_L2.0_rho125_l1.00.txt");
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -81,7 +87,8 @@ int main(int argc, char *argv[]) {
 
     fclose(neurons_params);
 
-    alpha = 0.2; // ! CONNECTION PROBABILITY
+    // alpha = 0.2; 
+    alpha = atof(argv[1]); // ! CONNECTION PROBABILITY
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
@@ -113,6 +120,11 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK 
 
     // ? CREATION OF THE NETWORK
+
+    int trials, links;
+
+    trials = 0; 
+    links = 0;
 
     uint8_t *AdjMatrix_flat = (uint8_t *)malloc(N_neurons * N_neurons * sizeof(uint8_t));
     memset(AdjMatrix_flat, 0, N_neurons * N_neurons * sizeof(uint8_t)); // Initialize adjacency matrix with zeros
@@ -149,8 +161,10 @@ int main(int argc, char *argv[]) {
                 if (i != j){
                     if(AdjMatrix_flat[i*N_neurons + j] == 0){ // If there is no connection yet
                         if (new_axon_intersection(X, Y, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, L, dx, dy)){ // Check if the new segment intersects with the dendrites of neuron j
+                            trials ++;
                             if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
                                 AdjMatrix_flat[i*N_neurons + j] = 1; // Create connection
+                                links ++;
                             }
                         }
                     }
@@ -171,6 +185,10 @@ int main(int argc, char *argv[]) {
     }
 
     fclose(axon_simulation);
+
+    printf("\nTrials (intersections) = %d\n", trials);
+    printf("Links created          = %d\n", links);
+    printf("Acceptance ratio       = %.6f\n", (double)links / (double)trials);
 
     FILE *adj_matrix_file;
     if ((adj_matrix_file = fopen(filename, "w")) == NULL) {

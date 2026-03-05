@@ -14,5 +14,10 @@ adjacency_matrix_agg_nc25_s0.20_txt/
 configurations/
 adjacency_matrix_agg_nc50_s0.10_txt/
 adjacency_matrix_random_l0.50_txt/
-
+2D_axon_simulation/
+3D_axon_simulation/
+2D_created_networks/
+3D_created_networks/
+2D_initial_conditions/
+3D_initial_conditions/
 
