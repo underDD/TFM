@@ -2,11 +2,10 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 2){
+    if (argc < 3){
         printf("Usage: %s alpha\n", argv[0]);
         return 1;
     }
-
     
     ini_ran(time(NULL));
     
@@ -33,7 +32,8 @@ int main(int argc, char *argv[]) {
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
-    sprintf(filename, "2D_initial_configurations/2D_neurons_params_random_L2.0_rho125_l1.00.txt");
+    // sprintf(filename, "2D_initial_configurations/2D_neurons_params_agg_nc10_s0.05_L3.0_rho250_l0.50.txt");
+    strcpy(filename, argv[2]);
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
         sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", L, rho, l_mean, alpha);
     }
     else{
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_agg_nc%d_s%.2f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
         sprintf(filename, "2D_created_networks/2D_adjacency_matrix_random_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", L, rho, l_mean, alpha);
     }
     else{
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_agg_nc%d_s%.2f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK 
@@ -130,7 +130,8 @@ int main(int argc, char *argv[]) {
     memset(AdjMatrix_flat, 0, N_neurons * N_neurons * sizeof(uint8_t)); // Initialize adjacency matrix with zeros
 
     for(int i = 0; i < N_neurons; i++){
-        printf("Creating connections for neuron %d/%d\r", i+1, N_neurons);
+        // printf("Creating connections for neuron %d/%d\r", i+1, N_neurons);
+        fflush(stdout);
         double initial_segment_vector_x, initial_segment_vector_y;
         double initial_angle = randomInPR(0.0, 2*PI); // Initial angle of the axon (randomly distributed between 0 and 2*pi)
 
@@ -183,6 +184,7 @@ int main(int argc, char *argv[]) {
             initial_segment_vector_y = end_segment_vector_y;
         }
     }
+    printf("\n");
 
     fclose(axon_simulation);
 

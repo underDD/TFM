@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 2){
+    if (argc < 3){
         printf("Usage: %s alpha\n", argv[0]);
         return 1;
     }
@@ -32,7 +32,8 @@ int main(int argc, char *argv[]) {
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
-    sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L2.0_rho125_l1.00.txt");
+    // sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L2.0_rho125_l1.00.txt");
+    strcpy(filename, argv[2]);
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]) {
         sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", L, rho, l_mean, alpha);
     }
     else{
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_agg_nc%d_s%.2f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -116,7 +117,7 @@ int main(int argc, char *argv[]) {
         sprintf(filename, "3D_created_networks/3D_adjacency_matrix_random_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", L, rho, l_mean, alpha);
     }
     else{
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_agg_nc%d_s%.2f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
@@ -132,7 +133,8 @@ int main(int argc, char *argv[]) {
     links = 0;
 
     for(int i = 0; i < N; i++){
-        printf("Creating connections for neuron %d/%d\r", i+1, N);
+        // printf("Creating connections for neuron %d/%d\r", i+1, N);
+        fflush(stdout);
         double initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z;
         double initial_angle_azi = randomInPR(0.0, 2.0*PI);
         double initial_angle_pol = acos(randomInPR(-1.0, 1.0)); // Polar angle between 0 and pi
@@ -203,7 +205,7 @@ int main(int argc, char *argv[]) {
 
         }
     }
-
+    printf("\n");
     fclose(axon_simulation);
 
     printf("\nTrials (intersections) = %d\n", trials);

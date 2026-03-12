@@ -1,6 +1,6 @@
 #include "3D_head.h"
 
-int main(){
+int main(int argc, char *argv[]) {
 
     ini_ran(time(NULL));
 
@@ -19,23 +19,32 @@ int main(){
     char filename[MAX_STRING_LENGTH];
 
     int agg; // 0 no aggragation, 1 aggregation
+    int n_centers;
+    double base_sigma;
 
-    L = 2.0;
-    rho = 125; // neurons per mm^3
+    if (argc != 13) {
+        printf("Uso:\n");
+        printf("%s L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi agg n_centers base_sigma\n", argv[0]);
+        return 1;
+    }
+
+    L = atof(argv[1]);
+    rho = atof(argv[2]);
+    soma_diameter = atof(argv[3]);
+    d_mean = atof(argv[4]);
+    d_sigma = atof(argv[5]);
+    l_mean = atof(argv[6]);
+    segment_length = atof(argv[7]);
+    sigma_pol = atof(argv[8]);
+    sigma_azi = atof(argv[9]);
+    agg = atoi(argv[10]);
+    n_centers = atoi(argv[11]);
+    base_sigma = atof(argv[12]);
+
     N = (int)(rho * L * L * L);
-
-    soma_diameter = 0.015; // 15 microns
-
-    d_mean = 0.3; // mean of dendrite diameter distribution (Gaussian) (300 microns)
-    d_sigma = 0.04; // standard deviation of dendrite diameter distribution (Gaussian) (20 microns)
-
-    l_mean = 1.; // mean of axon length distribution (Rayleigh) (mm)
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
     
-    segment_length = 0.01;
-    sigma_pol = 0.1; // Standard deviation of polar angle distribution (Gaussian) (radians)
-    sigma_azi = 0.1; // Standard deviation of azimuthal angle distribution (Gaussian) (radians)
 
     X = (double *)malloc(N * sizeof(double));
     Y = (double *)malloc(N * sizeof(double));
@@ -44,8 +53,6 @@ int main(){
     somas = (double *)malloc(N * sizeof(double));
     dendrites_diameters = (double *)malloc(N * sizeof(double));
     axon_lengths = (double *)malloc(N * sizeof(double));
-
-    agg = 1; // Control variable for aggregation (0 no aggregation, 1 aggregation)
 
     if (agg == 0){
         
@@ -56,7 +63,7 @@ int main(){
             exit(1);
         }
 
-        printf("Placing nurons randomly in the box...\n Prameters:\n");
+        printf("Placing neurons randomly in the box...\nParameters:\n");
         printf("L = %.1lf\n", L);
         printf("rho = %.0f\n", rho);
         printf("N = %d\n", N);
@@ -116,21 +123,22 @@ int main(){
 
             axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
             fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], Z[i], somas[i], dendrites_diameters[i], axon_lengths[i]);
-            printf("Placed neuron %d/%d\r", i+1, N);
+            // printf("Placed neuron %d/%d\r", i+1, N);
+            fflush(stdout);
         }
-
+        printf("\n");
         fclose(neurons_params);
-
-    }else {
-        int n_centers = (int)(N * 0.1/2); // Number of aggregation centers (10% of total neurons)
+    }
+    
+    else {
         int neurons_in_center = (int)(N / n_centers); // Number of neurons in each center
         double mean_x, mean_y, mean_z, sigma_x, sigma_y, sigma_z;
-        double base_sigma, variation_sigma;
+        double variation_sigma;
 
-        base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
+        // base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
 
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_nc%d_s%.2lf_L%.1lf_rho%.0f_l%.2lf.txt", n_centers, base_sigma, L, rho, l_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_l%.2lf.txt", n_centers, base_sigma, L, rho, l_mean);
         FILE *neurons_params;
 
         if ((neurons_params = fopen(filename, "w")) == NULL) {
@@ -138,7 +146,7 @@ int main(){
             exit(1);
         }
 
-        printf("Placing nurons randomly in the box...\n Prameters:\n");
+        printf("Placing neurons randomly in the box...\nParameters:\n");
         printf("L = %.1lf\n", L);
         printf("rho = %.0f\n", rho);
         printf("N = %d\n", N);
@@ -153,6 +161,7 @@ int main(){
         printf("sigma_azi = %.3lf\n", sigma_azi);
         printf("nc = %d\n", n_centers);
         printf("base_sigma = %.3lf\n", base_sigma);
+        printf("Output file: %s", filename);
 
         fprintf(neurons_params, "L = %.1lf\n", L);
         fprintf(neurons_params, "rho = %.0f\n", rho);
@@ -212,10 +221,25 @@ int main(){
 
                 axon_lengths[c*neurons_in_center + n] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
                 fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\t%f\n", X[c*neurons_in_center + n], Y[c*neurons_in_center + n], Z[c*neurons_in_center + n], somas[c*neurons_in_center + n], dendrites_diameters[c*neurons_in_center + n], axon_lengths[c*neurons_in_center + n]);
+                // printf("Placed neuron %d/%d\r", c*neurons_in_center + n + 1, N);
+                fflush(stdout);
             }
+            printf("\n");
         }
         fclose(neurons_params);
+
     }
 
     return 0;
 }
+
+// L = 2.0;
+// rho = 125; // neurons per mm^3
+// soma_diameter = 0.015; // 15 microns
+// d_mean = 0.3; // mean of dendrite diameter distribution (Gaussian) (300 microns)
+// d_sigma = 0.04; // standard deviation of dendrite diameter distribution (Gaussian) (20 microns)
+// l_mean = 1.; // mean of axon length distribution (Rayleigh) (mm)
+// segment_length = 0.01;
+// sigma_pol = 0.1; // Standard deviation of polar angle distribution (Gaussian) (radians)
+// sigma_azi = 0.1; // Standard deviation of azimuthal angle distribution (Gaussian) (radians)
+// agg = 1; // Control variable for aggregation (0 no aggregation, 1 aggregation)
