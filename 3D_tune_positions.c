@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     if (agg == 0){
         
         FILE *neurons_params;
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L%.1lf_rho%.0f_l%.2lf.txt", L, rho, l_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", L, rho, l_mean, d_mean);
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);
             exit(1);
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
         // base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
 
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_l%.2lf.txt", n_centers, base_sigma, L, rho, l_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean);
         FILE *neurons_params;
 
         if ((neurons_params = fopen(filename, "w")) == NULL) {

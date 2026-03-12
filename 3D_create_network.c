@@ -96,10 +96,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
     if (n_centers == 0){
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", L, rho, l_mean, alpha);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
     }
     else{
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -114,10 +114,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_random_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", L, rho, l_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
     }
     else{
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
