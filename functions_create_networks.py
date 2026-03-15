@@ -576,3 +576,117 @@ def neuron_map_adj3D(filename_in, filename_out, parameters3D):
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.3)
     plt.show()
+from scipy.signal import find_peaks
+
+# =========================================================
+# FUNCIÓN PARA CALCULAR GNA A PARTIR DEL RASTER
+# =========================================================
+
+def compute_GNA_from_raster(firings_t, firings_i, N, SIM_TIME, W=25, indices_are_1_based=True):
+    """
+    Calcula la actividad global de red (GNA) como:
+        GNA(t) = nº de neuronas activas en la ventana / N
+
+    donde una neurona cuenta solo UNA vez por ventana,
+    aunque dispare varios spikes dentro de ella.
+
+    Parámetros
+    ----------
+    firings_t : array
+        Tiempos de disparo (en ms, enteros)
+    firings_i : array
+        Índices de neurona asociados a cada spike
+    N : int
+        Número total de neuronas
+    SIM_TIME : int
+        Tiempo total de simulación (ms)
+    W : int
+        Tamaño de la ventana deslizante (ms)
+    indices_are_1_based : bool
+        True si firings_i va de 1..N
+        False si firings_i va de 0..N-1
+
+    Devuelve
+    --------
+    GNA : array de longitud SIM_TIME
+        Fracción de neuronas activas en cada instante
+    GNA_percent : array de longitud SIM_TIME
+        Igual que GNA pero en %
+    active_neurons_count : array de longitud SIM_TIME
+        Número de neuronas activas en cada instante
+    """
+
+    firings_t = np.asarray(firings_t, dtype=int)
+    firings_i = np.asarray(firings_i, dtype=int)
+
+    # Pasar índices a 0-based si están en 1..N
+    if indices_are_1_based:
+        neuron_ids = firings_i - 1
+    else:
+        neuron_ids = firings_i.copy()
+
+    # Filtrar por seguridad spikes fuera de rango
+    valid = (
+        (firings_t >= 1) & (firings_t <= SIM_TIME) &
+        (neuron_ids >= 0) & (neuron_ids < N)
+    )
+    firings_t = firings_t[valid]
+    neuron_ids = neuron_ids[valid]
+
+    # -----------------------------------------------------
+    # 1) Matriz binaria de actividad: activity[n, t] = 1 si
+    #    la neurona n dispara en el instante t
+    # -----------------------------------------------------
+    activity = np.zeros((N, SIM_TIME), dtype=np.uint8)
+
+    # firings_t va de 1..SIM_TIME, así que restamos 1 para indexar 0..SIM_TIME-1
+    activity[neuron_ids, firings_t - 1] = 1
+
+    # -----------------------------------------------------
+    # 2) Para cada neurona, calculamos si ha estado activa
+    #    al menos una vez dentro de la ventana de tamaño W
+    #
+    #    Usamos convolución temporal por neurona:
+    #    si la suma en la ventana > 0, esa neurona está activa
+    # -----------------------------------------------------
+    kernel = np.ones(W, dtype=int)
+
+    active_in_window = np.zeros_like(activity, dtype=np.uint8)
+
+    for n in range(N):
+        counts_in_window = np.convolve(activity[n], kernel, mode='same')
+        active_in_window[n] = (counts_in_window > 0).astype(np.uint8)
+
+    # -----------------------------------------------------
+    # 3) Número de neuronas activas por instante
+    # -----------------------------------------------------
+    active_neurons_count = np.sum(active_in_window, axis=0)
+
+    # Fracción y porcentaje
+    GNA = active_neurons_count / N
+    # GNA_percent = 100 * GNA
+
+    return GNA, active_neurons_count
+
+
+def Gini_coefficient(X, Y, n_grid, xmin, xmax, ymin, ymax):
+    H, _, _ = np.histogram2d(X, Y, bins=n_grid, range=[[xmin,xmax],[ymin,ymax]])
+    bin_sum = H.sum()
+
+    sum_gini = 0.0
+    H_flat = H.flatten()
+    H_flat.sort()
+    H_flat = H_flat[::-1]
+
+    G = np.zeros(len(H_flat))
+
+    for i, h in enumerate(H_flat):
+        sum_gini += h
+        G[i] = sum_gini/bin_sum
+
+    bins = np.arange(1, len(H_flat)+1)
+    bins = bins/len(H_flat)
+
+    area_between = np.trapezoid(G-bins, bins)
+    Gini = 2*area_between
+    return Gini

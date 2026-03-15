@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
         fprintf(neurons_params, "segment_length = %.3lf\n", segment_length);
         fprintf(neurons_params, "sigma_axon_angle = %.3lf\n", sigma_axon_angle);
         fprintf(neurons_params, "nc = %d\n", 0);
-        fprintf(neurons_params, "base_sigma = %.3lf\n", 0.0);
+        fprintf(neurons_params, "base_sigma = %.4lf\n", 0.0);
         fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
         
         bool overlap;
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
         fprintf(neurons_params, "segment_length = %.3lf\n", segment_length);
         fprintf(neurons_params, "sigma_axon_angle = %.3lf\n", sigma_axon_angle);
         fprintf(neurons_params, "nc = %d\n", n_centers);
-        fprintf(neurons_params, "base_sigma = %.3lf\n", base_sigma);
+        fprintf(neurons_params, "base_sigma = %.4lf\n", base_sigma);
         
         fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
         

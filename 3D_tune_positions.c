@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
         fprintf(neurons_params, "sigma_pol = %.3lf\n", sigma_pol);
         fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
         fprintf(neurons_params, "nc = %d\n", 0);
-        fprintf(neurons_params, "base_sigma = %.3lf\n", 0.0);
+        fprintf(neurons_params, "base_sigma = %.4lf\n", 0.0);
 
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
         printf("sigma_pol = %.3lf\n", sigma_pol);
         printf("sigma_azi = %.3lf\n", sigma_azi);
         printf("nc = %d\n", n_centers);
-        printf("base_sigma = %.3lf\n", base_sigma);
+        printf("base_sigma = %.4lf\n", base_sigma);
         printf("Output file: %s", filename);
 
         fprintf(neurons_params, "L = %.1lf\n", L);
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
         fprintf(neurons_params, "sigma_pol = %.3lf\n", sigma_pol);
         fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
         fprintf(neurons_params, "nc = %d\n", n_centers);
-        fprintf(neurons_params, "base_sigma = %.3lf\n", base_sigma);
+        fprintf(neurons_params, "base_sigma = %.4lf\n", base_sigma);
 
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 

@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     char filename[MAX_STRING_LENGTH];
     char filename_simulation[MAX_STRING_LENGTH];
 
-    FILE *axon_simulation;
+    // FILE *axon_simulation;
     FILE *neurons_params;
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
@@ -92,19 +92,19 @@ int main(int argc, char *argv[]) {
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
-    if (n_centers == 0){
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
-    }
-    else{
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
-    }
+    // if (n_centers == 0){
+    //     sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
+    // }
+    // else{
+    //     sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+    // }
 
-    if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
-        printf("Error opening file %s\n", filename_simulation);
-        exit(1);
-    }
+    // if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
+    //     printf("Error opening file %s\n", filename_simulation);
+    //     exit(1);
+    // }
 
-    fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");
+    // fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
             PBC(&end_segment_vector_x, L);
             PBC(&end_segment_vector_y, L);
 
-            fprintf(axon_simulation, "%d\t%d\t%f\t%f\t%f\t%f\n", i, k, initial_segment_vector_x, initial_segment_vector_y, end_segment_vector_x, end_segment_vector_y);
+            // fprintf(axon_simulation, "%d\t%d\t%f\t%f\t%f\t%f\n", i, k, initial_segment_vector_x, initial_segment_vector_y, end_segment_vector_x, end_segment_vector_y);
 
             initial_segment_vector_x = end_segment_vector_x;
             initial_segment_vector_y = end_segment_vector_y;
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
-    fclose(axon_simulation);
+    // fclose(axon_simulation);
 
     printf("\nTrials (intersections) = %d\n", trials);
     printf("Links created          = %d\n", links);
