@@ -17,12 +17,13 @@ int main(int argc, char *argv[]) {
     double *axon_lengths;
 
     char filename[MAX_STRING_LENGTH];
+    char BC_type[MAX_STRING_LENGTH];
 
     int agg; // 0 no aggragation, 1 aggregation
     int n_centers;
     double base_sigma;
 
-    if (argc != 13) {
+    if (argc != 14) {
         printf("Uso:\n");
         printf("%s L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi agg n_centers base_sigma\n", argv[0]);
         return 1;
@@ -40,11 +41,13 @@ int main(int argc, char *argv[]) {
     agg = atoi(argv[10]);
     n_centers = atoi(argv[11]);
     base_sigma = atof(argv[12]);
+    strcpy(BC_type, argv[13]);
 
     N = (int)(rho * L * L * L);
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
     
+    // strcpy(BC_type, "PBC"); // Boundary conditions type (PBC: Periodic Boundary Conditions, RBC: Reflective Boundary Conditions)
 
     X = (double *)malloc(N * sizeof(double));
     Y = (double *)malloc(N * sizeof(double));
@@ -54,10 +57,12 @@ int main(int argc, char *argv[]) {
     dendrites_diameters = (double *)malloc(N * sizeof(double));
     axon_lengths = (double *)malloc(N * sizeof(double));
 
+
+
     if (agg == 0){
         
         FILE *neurons_params;
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", L, rho, l_mean, d_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_%s_random_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);
             exit(1);
@@ -90,6 +95,7 @@ int main(int argc, char *argv[]) {
         fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
         fprintf(neurons_params, "nc = %d\n", 0);
         fprintf(neurons_params, "base_sigma = %.4lf\n", 0.0);
+        fprintf(neurons_params, "BC_type = %s\n", BC_type);
 
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
@@ -102,10 +108,20 @@ int main(int argc, char *argv[]) {
                 Z[i] = randomInPR(-L/2.0, L/2.0);
                 
                 overlap = false;
+                double dx = 0, dy = 0, dz = 0;
                 for(int j = 0; j < i; j++){
-                    double dx = min_image(X[i]-X[j], L); // Considerar condiciones de frontera periódicas
-                    double dy = min_image(Y[i]-Y[j], L);
-                    double dz = min_image(Z[i]-Z[j], L);
+
+                    if (strcmp(BC_type, "PBC") == 0){
+                        dx = min_image(X[i]-X[j], L);
+                        dy = min_image(Y[i]-Y[j], L);
+                        dz = min_image(Z[i]-Z[j], L);
+                    }
+                    else{
+                        dx = X[i] - X[j];
+                        dy = Y[i] - Y[j];
+                        dz = Z[i] - Z[j];
+                    }
+
                     double dist = sqrt(dx*dx + dy*dy + dz*dz);
                     if (dist < soma_diameter){
                         overlap = true;
@@ -131,14 +147,16 @@ int main(int argc, char *argv[]) {
     }
     
     else {
-        int neurons_in_center = (int)(N / n_centers); // Number of neurons in each center
+
+        int base_count = N / n_centers;
+        int remainder = N % n_centers;
         double mean_x, mean_y, mean_z, sigma_x, sigma_y, sigma_z;
         double variation_sigma;
 
         // base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
 
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_%s_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
         FILE *neurons_params;
 
         if ((neurons_params = fopen(filename, "w")) == NULL) {
@@ -176,35 +194,69 @@ int main(int argc, char *argv[]) {
         fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
         fprintf(neurons_params, "nc = %d\n", n_centers);
         fprintf(neurons_params, "base_sigma = %.4lf\n", base_sigma);
+        fprintf(neurons_params, "BC_type = %s\n", BC_type);
 
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
+        int idx = 0;
+
         for(int c = 0; c < n_centers; c++){
+
+            int n_this_center = base_count + (c < remainder ? 1 : 0); // Distribute the remainder neurons among the first 'remainder' centers
 
             sigma_x = base_sigma + randomInPR(-variation_sigma, variation_sigma);
             sigma_y = base_sigma + randomInPR(-variation_sigma, variation_sigma);
             sigma_z = base_sigma + randomInPR(-variation_sigma, variation_sigma);
 
-            mean_x = randomInPR(-L/2.0, L/2.0);
-            mean_y = randomInPR(-L/2.0, L/2.0);
-            mean_z = randomInPR(-L/2.0, L/2.0);
+            if (strcmp(BC_type, "PBC") == 0){
+                mean_x = randomInPR(-L/2.0, L/2.0);
+                mean_y = randomInPR(-L/2.0, L/2.0);
+                mean_z = randomInPR(-L/2.0, L/2.0);
+            }
+            else{
+                double margin = 2.0 * sigma_x;
+                mean_x = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                mean_y = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                mean_z = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+            }
 
-            for(int n = 0; n < neurons_in_center; n++){
+            for(int n = 0; n < n_this_center; n++){
                 bool overlap;
                 do{
 
-                    X[c*neurons_in_center + n] = mean_x + sigma_x * box_muller();
-                    Y[c*neurons_in_center + n] = mean_y + sigma_y * box_muller();
-                    Z[c*neurons_in_center + n] = mean_z + sigma_z * box_muller();
-                    PBC(&X[c*neurons_in_center + n], L);
-                    PBC(&Y[c*neurons_in_center + n], L);
-                    PBC(&Z[c*neurons_in_center + n], L);
+                    if (strcmp(BC_type, "PBC") == 0){
+                        X[idx] = mean_x + sigma_x * box_muller();
+                        Y[idx] = mean_y + sigma_y * box_muller();
+                        Z[idx] = mean_z + sigma_z * box_muller();
+                        PBC(&X[idx], L);
+                        PBC(&Y[idx], L);
+                        PBC(&Z[idx], L);
+                    }
+                    else{
+                        do {
+                            X[idx] = mean_x + sigma_x * box_muller();
+                            Y[idx] = mean_y + sigma_y * box_muller();
+                            Z[idx] = mean_z + sigma_z * box_muller();
+                        } while (X[idx] < -L/2.0 || X[idx] > L/2.0 ||
+                                 Y[idx] < -L/2.0 || Y[idx] > L/2.0 ||
+                                 Z[idx] < -L/2.0 || Z[idx] > L/2.0);
+                    }
 
                     overlap = false;
-                    for(int j = 0; j < c*neurons_in_center + n; j++){
-                        double dx = min_image(X[c*neurons_in_center + n]-X[j], L);
-                        double dy = min_image(Y[c*neurons_in_center + n]-Y[j], L);
-                        double dz = min_image(Z[c*neurons_in_center + n]-Z[j], L);
+                    double dx = 0, dy = 0, dz = 0;
+
+                    for(int j = 0; j < idx; j++){
+
+                        if (strcmp(BC_type, "PBC") == 0){
+                            dx = min_image(X[idx]-X[j], L);
+                            dy = min_image(Y[idx]-Y[j], L);
+                            dz = min_image(Z[idx]-Z[j], L);
+                        }
+                        else{
+                            dx = X[idx] - X[j];
+                            dy = Y[idx] - Y[j];
+                            dz = Z[idx] - Z[j];
+                        }
                         double dist = sqrt(dx*dx + dy*dy + dz*dz);
                         if (dist < soma_diameter){
                             overlap = true;
@@ -214,14 +266,14 @@ int main(int argc, char *argv[]) {
 
                 }while(overlap);
 
-                somas[c*neurons_in_center + n] = soma_diameter;
+                somas[idx] = soma_diameter;
                 do{
-                    dendrites_diameters[c*neurons_in_center + n] = d_mean + d_sigma * box_muller();
-                }while(dendrites_diameters[c*neurons_in_center + n] <= 0.0);
+                    dendrites_diameters[idx] = d_mean + d_sigma * box_muller();
+                }while(dendrites_diameters[idx] <= 0.0);
 
-                axon_lengths[c*neurons_in_center + n] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
-                fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\t%f\n", X[c*neurons_in_center + n], Y[c*neurons_in_center + n], Z[c*neurons_in_center + n], somas[c*neurons_in_center + n], dendrites_diameters[c*neurons_in_center + n], axon_lengths[c*neurons_in_center + n]);
-                // printf("Placed neuron %d/%d\r", c*neurons_in_center + n + 1, N);
+                axon_lengths[idx] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
+                fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\t%f\n", X[idx], Y[idx], Z[idx], somas[idx], dendrites_diameters[idx], axon_lengths[idx]);
+                // printf("Placed neuron %d/%d\r", idx + 1, N);
                 fflush(stdout);
             }
             printf("\n");

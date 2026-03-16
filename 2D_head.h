@@ -38,4 +38,11 @@ double inverse_cumulative_rayleigh(double p, double sigma);
 void new_vector_segment(double segment_length, double angle, double *dx, double *dy);
 double min_image(double d, double L);
 bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double L, double dx, double dy);
+bool new_axon_intersection_noPBC2D(double cx, double cy, double dendrite_diameter,
+                                double x0, double y0,
+                                double dx, double dy);
+void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vector_y, double *dx, double *dy,
+                       double L, double *end_segment_vector_x, double *end_segment_vector_y, double *X, double *Y,
+                       double *dendrites_diameters, int i, int N_neurons, uint8_t *AdjMatrix_flat, double alpha,
+                       int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx);
 //************************************

@@ -4,16 +4,16 @@ from pathlib import Path
 from pypalettes import load_cmap
 import matplotlib.pyplot as plt
 
-def load_neuron_params(filename, nrows_skiped=13):
+def load_neuron_params(filename, nrows_skiped=14):
         data = np.loadtxt(filename, skiprows=nrows_skiped)
         return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4]
 
 def run_2D_tune_positions(parameters2D, show_prints=True):
 
     if parameters2D["agg"] == 0:
-        filename = f"2D_initial_configurations/2D_neurons_params_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
     else:
-        filename = f"2D_initial_configurations/2D_neurons_params_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
 
     filepath = Path(filename)
 
@@ -41,7 +41,8 @@ def run_2D_tune_positions(parameters2D, show_prints=True):
             str(parameters2D["sigma_axon_angle"]),
             str(parameters2D["agg"]),
             str(parameters2D["n_centers"]),
-            str(parameters2D["base_sigma"])
+            str(parameters2D["base_sigma"]),
+            str(parameters2D["BC_type"])
         ], capture_output=True, text=True)
 
         if show_prints:
@@ -53,18 +54,18 @@ def run_2D_tune_positions(parameters2D, show_prints=True):
 def create_network2D(parameters2D, alphas, show_prints = True):
     
     if parameters2D["agg"] == 0:
-        filename = f"2D_initial_configurations/2D_neurons_params_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
     else:
-        filename = f"2D_initial_configurations/2D_neurons_params_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
 
     # --------------------------------
 
     output_filenames = []
     for a in alphas:
             if parameters2D["agg"] == 0:
-                output_filenames.append(f"2D_created_networks/2D_adjacency_matrix_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{a:.3f}.txt")
+                output_filenames.append(f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{a:.3f}.txt")
             else:
-                output_filenames.append(f"2D_created_networks/2D_adjacency_matrix_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{a:.3f}.txt")
+                output_filenames.append(f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{a:.3f}.txt")
 
     output_filepaths = []
 
@@ -206,9 +207,9 @@ def neuron_map_gini2D(filename, parameters2D):
 
 def run_3D_tune_positions(parameters3D, show_prints=True):
     if parameters3D["agg"] == 0:
-        filename = f"3D_initial_configurations/3D_neurons_params_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
-        filename = f"3D_initial_configurations/3D_neurons_params_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     filepath = Path(filename)
 
     # =========================
@@ -236,7 +237,8 @@ def run_3D_tune_positions(parameters3D, show_prints=True):
             str(parameters3D["sigma_azi"]),
             str(parameters3D["agg"]),
             str(parameters3D["n_centers"]),
-            str(parameters3D["base_sigma"])
+            str(parameters3D["base_sigma"]),
+            str(parameters3D["BC_type"])
         ], capture_output=True, text=True)
 
         if show_prints:
@@ -322,18 +324,18 @@ def neuron_map_adj2D(filename_in, filename_out, parameters2D, n_grid=20):
 def create_network3D(parameters3D, alphas, show_prints = True):
 
     if parameters3D["agg"] == 0:
-        filename = f"3D_initial_configurations/3D_neurons_params_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
-        filename = f"3D_initial_configurations/3D_neurons_params_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
 
     # --------------------------------
 
     output_filenames = []
     for a in alphas:
             if parameters3D["agg"] == 0:
-                output_filenames.append(f"3D_created_networks/3D_adjacency_matrix_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{a:.3f}.txt")
+                output_filenames.append(f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{a:.3f}.txt")
             else:
-                output_filenames.append(f"3D_created_networks/3D_adjacency_matrix_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{a:.3f}.txt")
+                output_filenames.append(f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{a:.3f}.txt")
 
     output_filepaths = []
 
@@ -360,7 +362,7 @@ def create_network3D(parameters3D, alphas, show_prints = True):
     
     return output_filenames
 
-def load_neuron_params_3D(filename, nrows_skiped=14):
+def load_neuron_params_3D(filename, nrows_skiped=15):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
     return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4], data[:,5]
 
@@ -503,7 +505,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pypalettes import load_cmap
 
-def load_neuron_params_3D(filename, nrows_skiped=14):
+def load_neuron_params_3D(filename, nrows_skiped=15):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
     return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4], data[:,5]
 

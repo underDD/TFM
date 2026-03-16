@@ -25,9 +25,12 @@ int main(int argc, char *argv[]) {
     double *axon_lengths;
 
     char filename[MAX_STRING_LENGTH];
-    // char filename_simulation[MAX_STRING_LENGTH];
+    char filename_simulation[MAX_STRING_LENGTH];
+    char BC_type[MAX_STRING_LENGTH];
 
-    // FILE *axon_simulation;
+    // strcpy(BC_type, "PBC"); // Boundary conditions type (PBC: Periodic Boundary Conditions, RBC: Reflective Boundary Conditions)
+
+    FILE *axon_simulation;
     FILE *neurons_params;
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
@@ -55,6 +58,7 @@ int main(int argc, char *argv[]) {
     fscanf(neurons_params, "sigma_azi = %lf\n", &sigma_azi);
     fscanf(neurons_params, "nc = %d\n", &n_centers);
     fscanf(neurons_params, "base_sigma = %lf\n", &base_sigma);
+    fscanf(neurons_params, "BC_type = %s\n", BC_type);
     
     N = (int)(rho * L * L * L);
 
@@ -95,29 +99,34 @@ int main(int argc, char *argv[]) {
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
-    // if (n_centers == 0){
-    //     sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
-    // }
-    // else{
-    //     sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
-    // }
+    if (n_centers == 0){
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
+    }
+    else{
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+    }
 
-    // if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
-    //     printf("Error opening file %s\n", filename_simulation);
-    //     exit(1);
-    // }
+    if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
+        printf("Error opening file %s\n", filename_simulation);
+        exit(1);
+    }
 
-    // fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tStart_Z\tEnd_X\tEnd_Y\tEnd_Z\n");
+    if (strcmp(BC_type, "PBC") == 0){
+        fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tStart_Z\tEnd_X\tEnd_Y\tEnd_Z\n");
+    }
+    else{
+        fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tSubsegment_Index\tStart_X\tStart_Y\tStart_Z\tEnd_X\tEnd_Y\tEnd_Z\n");
+    }
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
     }
     else{
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
@@ -139,12 +148,27 @@ int main(int argc, char *argv[]) {
         double initial_angle_azi = randomInPR(0.0, 2.0*PI);
         double initial_angle_pol = acos(randomInPR(-1.0, 1.0)); // Polar angle between 0 and pi
 
+        double xmin = -L/2.0, xmax = L/2.0;
+        double ymin = -L/2.0, ymax = L/2.0;
+        double zmin = -L/2.0, zmax = L/2.0;
+
         initial_segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle_azi) * sin(initial_angle_pol);
         initial_segment_vector_y = Y[i] + (soma_diameter/2.0) * sin(initial_angle_azi) * sin(initial_angle_pol);
         initial_segment_vector_z = Z[i] + (soma_diameter/2.0) * cos(initial_angle_pol);
-        PBC(&initial_segment_vector_x, L);
-        PBC(&initial_segment_vector_y, L);
-        PBC(&initial_segment_vector_z, L);
+        
+        if (strcmp(BC_type, "PBC") == 0){
+            PBC(&initial_segment_vector_x, L);
+            PBC(&initial_segment_vector_y, L);
+            PBC(&initial_segment_vector_z, L);
+        }
+        else{
+            if (initial_segment_vector_x < xmin) initial_segment_vector_x = xmin;
+            if (initial_segment_vector_x > xmax) initial_segment_vector_x = xmax;
+            if (initial_segment_vector_y < ymin) initial_segment_vector_y = ymin;
+            if (initial_segment_vector_y > ymax) initial_segment_vector_y = ymax;
+            if (initial_segment_vector_z < zmin) initial_segment_vector_z = zmin;
+            if (initial_segment_vector_z > zmax) initial_segment_vector_z = zmax;
+        }
 
         int number_of_segments = (int)(axon_lengths[i] / segment_length);
 
@@ -175,27 +199,39 @@ int main(int argc, char *argv[]) {
             initial_angle_azi = angle_azi;
             initial_angle_pol = angle_pol;
 
-            for(int j = 0; j < N; j++){
-                if (i != j){
-                    if(AdjMatrix_flat[i*N + j] == 0){
-                        if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, dx, dy, dz)){
-                            trials ++;
-                            if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
-                                AdjMatrix_flat[i*N + j] = 1;
-                                links ++;
+            if (strcmp(BC_type, "PBC") == 0){
+                for(int j = 0; j < N; j++){
+                    if (i != j){
+                        if(AdjMatrix_flat[i*N + j] == 0){
+                            if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, dx, dy, dz)){
+                                trials ++;
+                                if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
+                                    AdjMatrix_flat[i*N + j] = 1;
+                                    links ++;
+                                }
                             }
                         }
                     }
                 }
+                end_segment_vector_x = initial_segment_vector_x + dx;
+                end_segment_vector_y = initial_segment_vector_y + dy;
+                end_segment_vector_z = initial_segment_vector_z + dz;
+    
+                PBC(&end_segment_vector_x, L);
+                PBC(&end_segment_vector_y, L);
+                PBC(&end_segment_vector_z, L);
             }
-
-            end_segment_vector_x = initial_segment_vector_x + dx;
-            end_segment_vector_y = initial_segment_vector_y + dy;
-            end_segment_vector_z = initial_segment_vector_z + dz;
-
-            PBC(&end_segment_vector_x, L);
-            PBC(&end_segment_vector_y, L);
-            PBC(&end_segment_vector_z, L);
+            else{
+                sticky_walls3D(initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z, 
+                                &dx, &dy, &dz, L, &end_segment_vector_x, &end_segment_vector_y, &end_segment_vector_z, X, Y, Z, 
+                                dendrites_diameters, i, N, AdjMatrix_flat, alpha, &trials, &links, axon_simulation, i, k);
+            
+                if (dx*dx + dy*dy + dz*dz > 1e-15){
+                    initial_angle_azi = atan2(dy, dx);
+                    initial_angle_pol = acos(dz / sqrt(dx*dx + dy*dy + dz*dz));
+                }
+            
+            }
 
             // fprintf(axon_simulation, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\n", i, k, initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z, end_segment_vector_x, end_segment_vector_y, end_segment_vector_z);
 
@@ -206,7 +242,7 @@ int main(int argc, char *argv[]) {
         }
     }
     printf("\n");
-    // fclose(axon_simulation);
+    fclose(axon_simulation);
 
     printf("\nTrials (intersections) = %d\n", trials);
     printf("Links created          = %d\n", links);

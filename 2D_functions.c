@@ -145,110 +145,132 @@ bool new_axon_intersection(double *x, double *y, double *dendrites_diameter, int
 #include <float.h>
 #include <stdint.h>
 
-int new_axon_intersection_noPBC(double cx, double cy, double dendrite_diameter,
+/*
+    Check if a line segment (x0,y0) -> (x0+dx, y0+dy) intersects with a circle centered at (cx,cy) with radius = dendrite_diameter/2
+    @param cx, cy: center of the circle (dendrite)
+    @param dendrite_diameter: diameter of the dendrite (circle)
+    @param x0, y0: starting point of the line segment (axon)
+    @param dx, dy: vector of the line segment (axon)
+    @return: true if intersects, false otherwise
+*/
+bool new_axon_intersection_noPBC2D(double cx, double cy, double dendrite_diameter,
                                 double x0, double y0,
                                 double dx, double dy)
 {
     double R = dendrite_diameter / 2.0;
 
+    // End of the segment
     double x1 = x0 + dx;
     double y1 = y0 + dy;
 
-    double vx = x1 - x0;
-    double vy = y1 - y0;
+    // Vector of the segment
+    double vx = x1 - x0; // = dx
+    double vy = y1 - y0; // = dy
 
+    // Vector from the start of the segment to the center of the circle
     double wx = cx - x0;
     double wy = cy - y0;
 
+    // Length squared of the segment vector
     double vv = vx*vx + vy*vy;
     double t;
 
+    // Segment is almost a point
     if (vv < 1e-15){
         double ddx = cx - x0;
         double ddy = cy - y0;
         return (ddx*ddx + ddy*ddy <= R*R);
     }
 
+    // Projection of w onto v, normalized by the length of v
     t = (wx*vx + wy*vy) / vv;
 
+    // t = 0 --> beginning of the segment, t = 1 --> end of the segment
+    // t < 0 --> before the segment, t > 1 --> after the segment
+    // 0 < t < 1 --> projection is on the segment
     if (t < 0.0) t = 0.0;
     if (t > 1.0) t = 1.0;
 
+    // Closest point on the segment to the center of the circle
     double px = x0 + t*vx;
     double py = y0 + t*vy;
 
+    // Distance from the closest point to the center of the circle
     double ddx = cx - px;
     double ddy = cy - py;
 
+    // Check if the distance is less than or equal to the radius of the circle
     return (ddx*ddx + ddy*ddy <= R*R);
 }
 
-void sticky_walls(double initial_segment_vector_x, double initial_segment_vector_y,
-                  double *dx, double *dy, double L,
-                  double *end_segment_vector_x, double *end_segment_vector_y,
-                  double *X, double *Y, double *dendrites_diameters,
-                  int i, int N_neurons,
-                  uint8_t *AdjMatrix_flat, double alpha,
-                  int *trials, int *links)
-{
+/*
+    Simulate the growth of an axon segment with "sticky walls" boundary conditions.
+    The axon grows in a straight line defined by (dx, dy) until it hits a wall. Upon hitting a wall, it "sticks" and continues growing along the wall until it can grow again without immediately hitting the wall.
+    During the growth, it checks for intersections with dendrites of other neurons and updates the adjacency matrix accordingly.
+    @param initial_segment_vector_x, initial_segment_vector_y: starting point of the axon segment
+    @param dx, dy: initial growth vector of the axon segment (will be modified to reflect actual growth)
+    @param L: size of the box (for boundary conditions)
+    @param end_segment_vector_x, end_segment_vector_y: output parameters to store the final position of the axon segment after growth
+    @param X, Y: arrays of neuron positions
+    @param dendrites_diameters: array of dendrite diameters for each neuron
+    @param i: index of the current neuron whose axon is growing
+    @param N_neurons: total number of neurons
+    @param AdjMatrix_flat: flattened adjacency matrix to update with new connections
+    @param alpha: probability of forming a connection upon intersection
+    @param trials: pointer to count the number of intersection trials
+    @param links: pointer to count the number of successful connections formed
+*/
+void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vector_y, double *dx, double *dy,
+                       double L, double *end_segment_vector_x, double *end_segment_vector_y, double *X, double *Y,
+                       double *dendrites_diameters, int i, int N_neurons, uint8_t *AdjMatrix_flat, double alpha,
+                       int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx){
+
     double xmin = -L/2.0, xmax = L/2.0;
     double ymin = -L/2.0, ymax = L/2.0;
     double eps = 1e-12;
 
     double x = initial_segment_vector_x;
     double y = initial_segment_vector_y;
+    double total_len = sqrt(*dx*(*dx) + *dy*(*dy));
+    
+    // Normalized lenghts
+    double ux = *dx / total_len; // The new position is x_new = x_old + ux * step_len, where step_len is how much we can grow until hitting a wall or exhausting the remaining length
+    double uy = *dy / total_len; // y_new = y_old + uy * step_len
+    double remaining = total_len; // remaining length to grow
 
-    double total_len = sqrt((*dx)*(*dx) + (*dy)*(*dy));
+    int subsegment_idx = 0;
+    while (remaining > eps){
 
-    if (total_len < eps){
-        *end_segment_vector_x = x;
-        *end_segment_vector_y = y;
-        *dx = 0.0;
-        *dy = 0.0;
-        return;
-    }
+        double s_hit = DBL_MAX; // Start like the wall is in infinite
+        int wall_type = 0; // 0 = no wall, 1 = vertical wall, 2 = horizontal wall
 
-    double ux = (*dx) / total_len;
-    double uy = (*dy) / total_len;
-    double remaining = total_len;
+        // This four conditions are to check which is the closest wall
 
-    int safety_counter = 0;
-    int max_iter = 20;
-
-    while (remaining > eps && safety_counter < max_iter){
-
-        safety_counter++;
-
-        double s_hit = DBL_MAX;
-        int wall_type = 0;   // 1 = vertical, 2 = horizontal
-
-        // Distancia hasta pared vertical
-        if (ux > eps){
-            double s = (xmax - x) / ux;
-            if (s >= -eps && s < s_hit){
+        if (ux > eps){ // Moving to the right, right wall case
+            double s = (xmax - x)/ux; // how much we can grow until hitting the right wall
+            if (s < s_hit){ // we hit the wall before exhausting the remaining length
                 s_hit = s;
                 wall_type = 1;
             }
         }
-        else if (ux < -eps){
-            double s = (xmin - x) / ux;
-            if (s >= -eps && s < s_hit){
+        else if (ux < -eps){ // Moving to the left, left wall case
+            double s = (xmin - x)/ux; // how much we can grow until hitting the left wall
+            if (s < s_hit){ // we hit the wall before exhausting the remaining length
                 s_hit = s;
                 wall_type = 1;
             }
         }
 
-        // Distancia hasta pared horizontal
-        if (uy > eps){
-            double s = (ymax - y) / uy;
-            if (s >= -eps && s < s_hit){
+        if (uy > eps){ // Moving upwards, top wall case
+            double s = (ymax - y)/uy; // how much we can grow until hitting the top wall
+            if (s < s_hit){ // we hit the wall before exhausting the remaining length
                 s_hit = s;
                 wall_type = 2;
             }
         }
-        else if (uy < -eps){
-            double s = (ymin - y) / uy;
-            if (s >= -eps && s < s_hit){
+        else if (uy < -eps){ // Moving downwards, bottom wall case
+            double s = (ymin - y)/uy; // how much we can grow until hitting the bottom wall
+            if (s < s_hit){ // we hit the wall before exhausting the remaining length
                 s_hit = s;
                 wall_type = 2;
             }
@@ -257,15 +279,10 @@ void sticky_walls(double initial_segment_vector_x, double initial_segment_vector
         double x_next, y_next;
         double step_len;
 
-        // Caso 1: no choca antes de agotar la longitud restante
-        if (s_hit == DBL_MAX || s_hit > remaining){
-            x_next = x + remaining * ux;
-            y_next = y + remaining * uy;
+        if(s_hit > remaining){ // Case that the wall is far
             step_len = remaining;
-            remaining = 0.0;
         }
-        // Caso 2: está prácticamente ya en pared
-        else if (s_hit < eps){
+        else if(s_hit < eps){ // It is in the wall practicamente 
             if (wall_type == 1){
                 ux = 0.0;
                 if (uy > eps) uy = 1.0;
@@ -280,62 +297,68 @@ void sticky_walls(double initial_segment_vector_x, double initial_segment_vector
             }
             continue;
         }
-        // Caso 3: choca con pared antes de terminar este trozo
-        else{
-            x_next = x + s_hit * ux;
-            y_next = y + s_hit * uy;
+        else{ // It hits the wall in this step
             step_len = s_hit;
-            remaining -= s_hit;
         }
 
-        // Clamp fino por estabilidad
-        if (fabs(x_next - xmax) < 1e-10) x_next = xmax;
-        if (fabs(x_next - xmin) < 1e-10) x_next = xmin;
-        if (fabs(y_next - ymax) < 1e-10) y_next = ymax;
-        if (fabs(y_next - ymin) < 1e-10) y_next = ymin;
+        
+        // The next step is just the sum of the step_lenght in the (ux, uy) direction
+        x_next = x + step_len*ux;
+        y_next = y + step_len*uy;
+        remaining -= step_len;
+        
+        if (fabs(x_next -xmax) < eps) x_next = xmax;
+        if (fabs(x_next -xmin) < eps) x_next = xmin;
+        if (fabs(y_next -ymax) < eps) y_next = ymax;
+        if (fabs(y_next -ymin) < eps) y_next = ymin;
 
-        // =========================================================
-        // COMPROBAR INTERSECCIONES EN ESTE SUBSEGMENTO REAL: (x,y) -> (x_next,y_next)
-        // =========================================================
-        double seg_dx = x_next - x;
-        double seg_dy = y_next - y;
+        // Now check intersections in this new segment
 
+        double seg_dx = x_next - x; // x = initial_x
+        double seg_dy = y_next - y; // y = initial_y
+
+        // This is to check for intersections to this new segment
         for (int j = 0; j < N_neurons; j++){
-            if (j == i) continue;
-            if (AdjMatrix_flat[i*N_neurons + j] != 0) continue;
+            // Check intersection with dendrite j
+            if (j==i) continue;
+            if (AdjMatrix_flat[i*N_neurons + j]!= 0) continue;
 
-            if (new_axon_intersection_noPBC(
-                    X[j], Y[j], dendrites_diameters[j],
-                    x, y,
-                    seg_dx, seg_dy))
-            {
+            if(new_axon_intersection_noPBC2D(X[i], Y[i], dendrites_diameters[j], x, y, seg_dx, seg_dy)){
                 (*trials)++;
-                if (randomInPR(0.0, 1.0) < alpha){
+                if (randomInPR(0,1)<alpha){
                     AdjMatrix_flat[i*N_neurons + j] = 1;
                     (*links)++;
                 }
             }
         }
 
-        // Avanzar realmente al final de este subsegmento
-        x = x_next;
-        y = y_next;
+        if (axon_simulation != NULL){
+            fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
+                    neuron_idx, segment_idx, subsegment_idx,
+                    x, y,
+                    x_next, y_next);
+        }
 
-        // Si justo acabamos de tocar pared, reorientar el resto pegado a la pared
+        subsegment_idx++;
+
+        // Go to the end of this segment
+        x = x_next; 
+        y = y_next; 
+
+        // If we just hit the wall, we need to reorient the growth vector to be parallel to the wall for the remaining length
         if (remaining > eps && s_hit != DBL_MAX && step_len == s_hit){
             if (wall_type == 1){
                 ux = 0.0;
                 if (uy > eps) uy = 1.0;
                 else if (uy < -eps) uy = -1.0;
-                else break;
             }
             else if (wall_type == 2){
                 uy = 0.0;
                 if (ux > eps) ux = 1.0;
                 else if (ux < -eps) ux = -1.0;
-                else break;
             }
         }
+
     }
 
     if (x < xmin) x = xmin;

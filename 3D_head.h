@@ -38,4 +38,13 @@ bool new_axon_intersection_3D(double *x, double *y, double *z, double *dendrites
 double sqrt_distance(double x, double y);
 double scalar_product(double x1, double y1, double x2, double y2);
 double inverse_cumulative_rayleigh(double p, double sigma);
+bool new_axon_intersection_noPBC_3D(double cx, double cy, double cz, double dendrite_diameter,
+                                double x0, double y0, double z0,
+                                double dx, double dy, double dz);
+void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vector_y, double initial_segment_vector_z, 
+                    double *dx, double *dy, double *dz, double L,
+                    double *end_segment_vector_x, double *end_segment_vector_y, double *end_segment_vector_z,
+                    double *X, double *Y, double *Z, double *dendrites_diameters,
+                    int i, int N_neurons, uint8_t *AdjMatrix_flat, double alpha,
+                    int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx);
 //************************************

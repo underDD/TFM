@@ -26,8 +26,11 @@ int main(int argc, char *argv[]) {
 
     char filename[MAX_STRING_LENGTH];
     char filename_simulation[MAX_STRING_LENGTH];
+    char BC_type[MAX_STRING_LENGTH];
 
-    // FILE *axon_simulation;
+    // strcpy(BC_type, "PBC"); // Boundary conditions type (PBC: Periodic Boundary Conditions, RBC: Reflective Boundary Conditions)
+
+    FILE *axon_simulation;
     FILE *neurons_params;
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
@@ -54,6 +57,7 @@ int main(int argc, char *argv[]) {
     fscanf(neurons_params, "sigma_axon_angle = %lf\n", &sigma_axon_angle);
     fscanf(neurons_params, "nc = %d\n", &n_centers);
     fscanf(neurons_params, "base_sigma = %lf\n", &base_sigma);
+    fscanf(neurons_params, "BC_type = %s\n", BC_type);
 
     N_neurons = (int)(rho * L * L);
 
@@ -92,29 +96,34 @@ int main(int argc, char *argv[]) {
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
-    // if (n_centers == 0){
-    //     sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
-    // }
-    // else{
-    //     sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
-    // }
+    if (n_centers == 0){
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
+    }
+    else{
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+    }
 
-    // if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
-    //     printf("Error opening file %s\n", filename_simulation);
-    //     exit(1);
-    // }
+    if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
+        printf("Error opening file %s\n", filename_simulation);
+        exit(1);
+    }
 
-    // fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");
+    if (strcmp(BC_type, "PBC") == 0){
+        fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");
+    }
+    else{
+        fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tSubsegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");
+    }
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
     }
     else{
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK 
@@ -135,10 +144,22 @@ int main(int argc, char *argv[]) {
         double initial_segment_vector_x, initial_segment_vector_y;
         double initial_angle = randomInPR(0.0, 2*PI); // Initial angle of the axon (randomly distributed between 0 and 2*pi)
 
+        double xmin = -L/2.0, xmax = L/2.0;
+        double ymin = -L/2.0, ymax = L/2.0;
+
         initial_segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle);
         initial_segment_vector_y = Y[i] + (soma_diameter/2.0) * sin(initial_angle);
-        PBC(&initial_segment_vector_x, L);
-        PBC(&initial_segment_vector_y, L);
+        
+        if (strcmp(BC_type, "PBC") == 0){
+            PBC(&initial_segment_vector_x, L);
+            PBC(&initial_segment_vector_y, L);
+        }
+        else{
+            if (initial_segment_vector_x < xmin) initial_segment_vector_x = xmin;
+            if (initial_segment_vector_x > xmax) initial_segment_vector_x = xmax;
+            if (initial_segment_vector_y < ymin) initial_segment_vector_y = ymin;
+            if (initial_segment_vector_y > ymax) initial_segment_vector_y = ymax;
+        }
 
         int number_of_segments = (int)(axon_lengths[i] / segment_length);
 
@@ -158,25 +179,38 @@ int main(int argc, char *argv[]) {
             new_vector_segment(segment_length, angle, &dx, &dy); // Calculate the vector of the new segment based on the angle and segment length
             initial_angle = angle; // Update the initial angle for the next segment
 
-            for(int j = 0; j<N_neurons; j++){
-                if (i != j){
-                    if(AdjMatrix_flat[i*N_neurons + j] == 0){ // If there is no connection yet
-                        if (new_axon_intersection(X, Y, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, L, dx, dy)){ // Check if the new segment intersects with the dendrites of neuron j
-                            trials ++;
-                            if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
-                                AdjMatrix_flat[i*N_neurons + j] = 1; // Create connection
-                                links ++;
+            if (strcmp(BC_type, "PBC") == 0){
+                for(int j = 0; j<N_neurons; j++){
+                    if (i != j){
+                        if(AdjMatrix_flat[i*N_neurons + j] == 0){ // If there is no connection yet
+                            if (new_axon_intersection(X, Y, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, L, dx, dy)){ // Check if the new segment intersects with the dendrites of neuron j
+                                trials ++;
+                                if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
+                                    AdjMatrix_flat[i*N_neurons + j] = 1; // Create connection
+                                    links ++;
+                                }
                             }
                         }
                     }
                 }
+
+                end_segment_vector_x = initial_segment_vector_x + dx;
+                end_segment_vector_y = initial_segment_vector_y + dy;
+
+                PBC(&end_segment_vector_x, L);
+                PBC(&end_segment_vector_y, L);
             }
-
-            end_segment_vector_x = initial_segment_vector_x + dx;
-            end_segment_vector_y = initial_segment_vector_y + dy;
-
-            PBC(&end_segment_vector_x, L);
-            PBC(&end_segment_vector_y, L);
+            else{
+                sticky_walls2D(initial_segment_vector_x, initial_segment_vector_y, &dx, &dy,
+                             L, &end_segment_vector_x, &end_segment_vector_y, X, Y,
+                             dendrites_diameters, i, N_neurons, AdjMatrix_flat, alpha,
+                             &trials, &links, axon_simulation, i, k);
+                
+                // To keep the angular persistence even after hitting the wall, we update the initial angle based on the new segment vector after sticky walls
+                if (dx*dx + dy*dy > 1e-15){
+                    initial_angle = atan2(dy, dx);
+                }
+            }
 
             // fprintf(axon_simulation, "%d\t%d\t%f\t%f\t%f\t%f\n", i, k, initial_segment_vector_x, initial_segment_vector_y, end_segment_vector_x, end_segment_vector_y);
 
@@ -184,6 +218,7 @@ int main(int argc, char *argv[]) {
             initial_segment_vector_y = end_segment_vector_y;
         }
     }
+
     printf("\n");
 
     // fclose(axon_simulation);
