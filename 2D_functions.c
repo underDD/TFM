@@ -325,7 +325,7 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
 
             if(new_axon_intersection_noPBC2D(X[i], Y[i], dendrites_diameters[j], x, y, seg_dx, seg_dy)){
                 (*trials)++;
-                if (randomInPR(0,1)<alpha){
+                if (randomInPR(0.0,1.0)<alpha){
                     AdjMatrix_flat[i*N_neurons + j] = 1;
                     (*links)++;
                 }
