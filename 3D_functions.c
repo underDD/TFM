@@ -205,7 +205,7 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
                     double *dx, double *dy, double *dz, double L,
                     double *end_segment_vector_x, double *end_segment_vector_y, double *end_segment_vector_z,
                     double *X, double *Y, double *Z, double *dendrites_diameters,
-                    int i, int N_neurons, uint8_t *AdjMatrix_flat, double alpha,
+                    int i, int N_neurons, uint8_t *AdjMatrix_flat,
                     int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx){
 
     double xmin = -L/2.0, xmax = L/2.0;
@@ -357,10 +357,10 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
                     seg_dx, seg_dy, seg_dz))
             {
                 (*trials)++;
-                if (randomInPR(0.0, 1.0) < alpha){
+                
                     AdjMatrix_flat[i*N_neurons + j] = 1;
                     (*links)++;
-                }
+                
             }
         }
 
@@ -412,4 +412,287 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
     *dx = x - initial_segment_vector_x;
     *dy = y - initial_segment_vector_y;
     *dz = z - initial_segment_vector_z;
+}
+int get_matrix_size(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening adjacency file");
+        return -1;
+    }
+
+    int rows = 0;
+    char line[MAX_STRING_LENGTH];
+
+    while (fgets(line, sizeof(line), file)) {
+        if (strlen(line) > 1) {
+            rows++;
+        }
+    }
+
+    fclose(file);
+    return rows;
+}
+
+int load_adjacency_matrix(const char *filename, uint8_t *AdjMatrix_flat, int N) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening adjacency file");
+        return -1;
+    }
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            int val;
+            if (fscanf(file, "%d", &val) != 1) {
+                fprintf(stderr, "Error reading adjacency matrix at row %d col %d\n", i, j);
+                fclose(file);
+                return -1;
+            }
+            AdjMatrix_flat[i*N + j] = (uint8_t)val;
+        }
+    }
+
+    fclose(file);
+    return 0;
+}
+
+/*
+    Initialize the Izhikevich parameters for excitatory and inhibitory neurons with some variability.
+    Ne: number of excitatory neurons
+    Ni: number of inhibitory neurons
+    a, b, c, d: arrays to store the parameters for each neuron
+*/
+void init_izhikevich_parameters(
+    int N, int Ne, int Ni,
+    double *a, double *b, double *c, double *d
+) {
+    for (int i = 0; i < Ne; i++) { // Para las excitatorias, a es 0.02, b es 0.2, c varía entre -65 y -50, d varía entre 2 y 8
+        double re = randomInPR(0.0, 1.0);
+        a[i] = 0.02;
+        b[i] = 0.2;
+        c[i] = -65.0 + 15.0 * re * re;
+        d[i] = 8.0 - 6.0 * re * re;
+    }
+
+    for (int i = 0; i < Ni; i++) { // Para las inhibitorias, a varía entre 0.02 y 0.1, b varía entre 0.25 y 0.2, c es -65, d es 2
+        double ri = randomInPR(0.0, 1.0);
+        int idx = Ne + i;
+        a[idx] = 0.02 + 0.08 * ri;
+        b[idx] = 0.25 - 0.05 * ri;
+        c[idx] = -65.0;
+        d[idx] = 2.0;
+    }
+}
+
+/*  
+    Build the synaptic weight matrix S based on the adjacency matrix A and the maximum excitatory and inhibitory weights.
+    A: adjacency matrix (flattened)
+    S: weight matrix to be filled (flattened)
+    N: total number of neurons
+    Ne: number of excitatory neurons
+    Ni: number of inhibitory neurons
+    max_exc_weight: maximum weight for excitatory connections
+    max_inh_weight: maximum weight for inhibitory connections
+*/
+void build_weight_matrix(
+    const uint8_t *A,
+    double *S,
+    int N, int Ne, int Ni,
+    double max_exc_weight,
+    double max_inh_weight
+) {
+    for (int i = 0; i < N; i++) { // Para cada neurona i, asignamos pesos a sus conexiones salientes
+        for (int j = 0; j < N; j++) {
+            double w;
+            
+            // Las primeras Ne neuronas son excitatorias, las últimas Ni son inhibitorias
+            if (j < Ne) { // Si la neurona j es excitatoria, el peso es positivo y se asigna un valor aleatorio entre 0 y max_exc_weight
+                w = max_exc_weight * randomInPR(0.0, 1.0);
+            } else { // Si la neurona j es inhibitoria, el peso es negativo y se asigna un valor aleatorio entre -max_inh_weight y 0
+                w = -max_inh_weight * randomInPR(0.0, 1.0);
+            }
+
+            S[i*N + j] = ((double)A[i*N + j]) * w;
+        }
+    }
+}
+
+#include <stdio.h>
+#include <string.h>
+
+int make_output_filename(
+    const char *adj_filename,
+    double max_exc_weight,
+    char *out_filename,
+    int out_size
+) {
+    MKDIR("3D_dynamics");
+
+    // Obtener nombre base (sin ruta)
+    const char *base = strrchr(adj_filename, '/');
+#ifdef _WIN32
+    const char *base2 = strrchr(adj_filename, '\\');
+    if (base2 && (!base || base2 > base)) base = base2;
+#endif
+    base = base ? base + 1 : adj_filename;
+
+    // Copiar a buffer local
+    char stem[512];
+    strncpy(stem, base, sizeof(stem) - 1);
+    stem[sizeof(stem) - 1] = '\0';
+
+    // Quitar extensión (.txt)
+    char *dot = strrchr(stem, '.');
+    if (dot) *dot = '\0';
+
+    // Sustituir "adjacency_matrix" por "dynamics"
+    char *p = strstr(stem, "adjacency_matrix");
+    if (p) {
+        memmove(p + strlen("dynamics"),
+                p + strlen("adjacency_matrix"),
+                strlen(p + strlen("adjacency_matrix")) + 1);
+        memcpy(p, "dynamics", strlen("dynamics"));
+    }
+
+    // Construir nombre final
+    int written = snprintf(
+        out_filename,
+        out_size,
+        "2D_dynamics/%s_exc%.3f.txt",
+        stem,
+        max_exc_weight
+    );
+
+    if (written < 0 || written >= out_size) {
+        fprintf(stderr, "Output filename too long.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/*
+    Simulate the Izhikevich neuron model dynamics based on the adjacency matrix A and save the spike times to an output file.
+    A: adjacency matrix (flattened)
+    N: total number of neurons
+    SIM_TIME: total simulation time in ms
+    max_exc_weight: maximum excitatory weight (used for building the weight matrix)
+    max_inh_weight: maximum inhibitory weight (used for building the weight matrix)
+    noise_max: maximum noise amplitude for excitatory neurons
+    output_filename: name of the file to save spike times
+*/
+int simulate_izhikevich(
+    const uint8_t *A,
+    int N,
+    int SIM_TIME,
+    double max_exc_weight,
+    double max_inh_weight,
+    double noise_max,
+    const char *output_filename
+) {
+
+    // 80% excitatory, 20% inhibitory
+    int Ne = (int)(0.8 * N);
+    int Ni = N - Ne;
+
+    // Allocate memory for neuron parameters and state variables
+    double *a = (double *)malloc(N * sizeof(double));
+    double *b = (double *)malloc(N * sizeof(double));
+    double *c = (double *)malloc(N * sizeof(double));
+    double *d = (double *)malloc(N * sizeof(double));
+    double *v = (double *)malloc(N * sizeof(double));
+    double *u = (double *)malloc(N * sizeof(double));
+    double *I = (double *)malloc(N * sizeof(double));
+    double *S = (double *)malloc(N * N * sizeof(double));
+    int *fired = (int *)malloc(N * sizeof(int));
+
+    // Esto es para verificar que la memoria se ha asignado correctamente
+    if (!a || !b || !c || !d || !v || !u || !I || !S || !fired) {
+        fprintf(stderr, "Memory allocation error in simulate_izhikevich.\n");
+        free(a); free(b); free(c); free(d); free(v); free(u); free(I); free(S); free(fired);
+        return -1;
+    }
+
+    // Inicializa los parámetros de las neuronas a, b, c, d y construye la matriz sináptica S a partir de la matriz de adyacencia A
+    init_izhikevich_parameters(N, Ne, Ni, a, b, c, d);
+    build_weight_matrix(A, S, N, Ne, Ni, max_exc_weight, max_inh_weight);
+
+    // Inicializa las variables de estado v y u
+    for (int i = 0; i < N; i++) {
+        v[i] = -65.0;
+        u[i] = b[i] * v[i];
+    }
+
+    FILE *out = fopen(output_filename, "w");
+    if (!out) {
+        perror("Error opening output file");
+        free(a); free(b); free(c); free(d); free(v); free(u); free(I); free(S); free(fired);
+        return -1;
+    }
+
+    fprintf(out, "# time\tneuron\n");
+
+    // long long para contar el total de spikes, ya que puede ser un número muy grande
+    long long total_spikes = 0;
+
+    // Simulación del modelo de Izhikevich
+    for (int t = 1; t <= SIM_TIME; t++) {
+
+        // Ruido gaussiano para las neuronas excitatorias, ruido más pequeño para las inhibitorias
+        for (int i = 0; i < Ne; i++) {
+            I[i] = noise_max * box_muller();
+        }
+        for (int i = Ne; i < N; i++) {
+            I[i] = 2.0 * box_muller();
+        }
+
+        // Detectar qué neuronas han disparado (v >= 30) y almacenar sus índices en el array fired
+        int n_fired = 0;
+        for (int i = 0; i < N; i++) {
+            if (v[i] >= 30.0) {
+                fired[n_fired++] = i;
+            }
+        }
+
+        // Para cada neurona que ha disparado se guarda en el fichero de salida y se restea su valor de v y u
+        if (n_fired > 0) {
+            for (int k = 0; k < n_fired; k++) {
+                int idx = fired[k];
+
+                fprintf(out, "%d\t%d\n", t, idx + 1); // Guardamos el tiempo y el índice de la neurona (sumamos 1 para que empiece en 1 en lugar de 0)
+                total_spikes++;
+
+                v[idx] = c[idx]; // Reset del potencial de membrana
+                u[idx] += d[idx]; // Reset de la variable de recuperación
+            }
+
+            // Para cada neurona i se suman todas las señales que llegan de las neuronas que han disparado.
+            for (int i = 0; i < N; i++) {
+                double sum_input = 0.0; // Para acumular lo que llega a i
+                for (int k = 0; k < n_fired; k++) { // Bucle sobre las neuronas que han disparado
+                    int j = fired[k]; // Índice de la neurona que ha disparado
+                    sum_input += S[i*N + j]; // S[i*N + j] es el peso de la conexión de j a i, si no hay conexión es 0, si j es excitatoria es positivo, si j es inhibitoria es negativo
+                }
+                I[i] += sum_input; // Se añade la suma de las entradas a la corriente I[i] que ya tiene el ruido
+            }
+        }
+
+        // Integrar las ecuaciones
+        for (int i = 0; i < N; i++) {
+            v[i] += 0.5 * (0.04*v[i]*v[i] + 5.0*v[i] + 140.0 - u[i] + I[i]);
+            v[i] += 0.5 * (0.04*v[i]*v[i] + 5.0*v[i] + 140.0 - u[i] + I[i]);
+            u[i] += a[i] * (b[i]*v[i] - u[i]);
+        }
+    }
+
+    fclose(out);
+
+    printf("Number of neurons: %d\n", N);
+    printf("Excitatory neurons: %d\n", Ne);
+    printf("Inhibitory neurons: %d\n", Ni);
+    printf("Total spikes: %lld\n", total_spikes);
+    printf("Dynamics saved in: %s\n", output_filename);
+
+    free(a); free(b); free(c); free(d); free(v); free(u); free(I); free(S); free(fired);
+    return 0;
 }

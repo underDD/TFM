@@ -2,8 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 3){
-        printf("Usage: %s alpha\n", argv[0]);
+    if (argc < 2){
+        printf("Usage: %s filename\n", argv[0]);
         return 1;
     }
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
     // sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L2.0_rho125_l1.00.txt");
-    strcpy(filename, argv[2]);
+    strcpy(filename, argv[1]);
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -95,15 +95,15 @@ int main(int argc, char *argv[]) {
     fclose(neurons_params);
 
     // alpha = 0.2; 
-    alpha = atof(argv[1]); // ! CONNECTION PROBABILITY
+    // alpha = atof(argv[1]); // ! CONNECTION PROBABILITY
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
     if (n_centers == 0){
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -123,10 +123,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
@@ -205,10 +205,10 @@ int main(int argc, char *argv[]) {
                         if(AdjMatrix_flat[i*N + j] == 0){
                             if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, dx, dy, dz)){
                                 trials ++;
-                                if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
-                                    AdjMatrix_flat[i*N + j] = 1;
-                                    links ++;
-                                }
+                                 // Connection probability alpha
+                                AdjMatrix_flat[i*N + j] = 1;
+                                links ++;
+                                
                             }
                         }
                     }
@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
             else{
                 sticky_walls3D(initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z, 
                                 &dx, &dy, &dz, L, &end_segment_vector_x, &end_segment_vector_y, &end_segment_vector_z, X, Y, Z, 
-                                dendrites_diameters, i, N, AdjMatrix_flat, alpha, &trials, &links, axon_simulation, i, k);
+                                dendrites_diameters, i, N, AdjMatrix_flat, &trials, &links, axon_simulation, i, k);
             
                 if (dx*dx + dy*dy + dz*dz > 1e-15){
                     initial_angle_azi = atan2(dy, dx);

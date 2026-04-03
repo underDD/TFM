@@ -2,8 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 3){
-        printf("Usage: %s alpha\n", argv[0]);
+    if (argc < 2){
+        printf("Usage: %s filename\n", argv[1]);
         return 1;
     }
     
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
     // sprintf(filename, "2D_initial_configurations/2D_neurons_params_agg_nc10_s0.05_L3.0_rho250_l0.50.txt");
-    strcpy(filename, argv[2]);
+    strcpy(filename, argv[1]);
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -92,15 +92,15 @@ int main(int argc, char *argv[]) {
     fclose(neurons_params);
 
     // alpha = 0.2; 
-    alpha = atof(argv[1]); // ! CONNECTION PROBABILITY
+    // alpha = atof(argv[1]); // ! CONNECTION PROBABILITY
 
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
     if (n_centers == 0){
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -120,10 +120,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f_a%.3f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean, alpha);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK 
@@ -182,15 +182,13 @@ int main(int argc, char *argv[]) {
             if (strcmp(BC_type, "PBC") == 0){
                 for(int j = 0; j<N_neurons; j++){
                     if (i != j){
-                        if(AdjMatrix_flat[i*N_neurons + j] == 0){ // If there is no connection yet
                             if (new_axon_intersection(X, Y, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, L, dx, dy)){ // Check if the new segment intersects with the dendrites of neuron j
                                 trials ++;
-                                if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
-                                    AdjMatrix_flat[i*N_neurons + j] = 1; // Create connection
+                                // if (randomInPR(0.0, 1.0) < alpha){ // Connection probability alpha
+                                    AdjMatrix_flat[i*N_neurons + j] += 1; // Create connection
                                     links ++;
-                                }
+                                // }
                             }
-                        }
                     }
                 }
 
@@ -203,7 +201,7 @@ int main(int argc, char *argv[]) {
             else{
                 sticky_walls2D(initial_segment_vector_x, initial_segment_vector_y, &dx, &dy,
                              L, &end_segment_vector_x, &end_segment_vector_y, X, Y,
-                             dendrites_diameters, i, N_neurons, AdjMatrix_flat, alpha,
+                             dendrites_diameters, i, N_neurons, AdjMatrix_flat,
                              &trials, &links, axon_simulation, i, k);
                 
                 // To keep the angular persistence even after hitting the wall, we update the initial angle based on the new segment vector after sticky walls

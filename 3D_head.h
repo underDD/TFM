@@ -8,6 +8,13 @@
 #include <float.h>
 #include <stdint.h>
 
+#ifdef _WIN32
+    #include <direct.h>
+    #define MKDIR(path) _mkdir(path)
+#else
+    #include <sys/stat.h>
+    #define MKDIR(path) mkdir(path, 0777)
+#endif
 
 #define MAX_STRING_LENGTH 100000
 #define fran rand()/((double)RAND_MAX+1)
@@ -45,6 +52,36 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
                     double *dx, double *dy, double *dz, double L,
                     double *end_segment_vector_x, double *end_segment_vector_y, double *end_segment_vector_z,
                     double *X, double *Y, double *Z, double *dendrites_diameters,
-                    int i, int N_neurons, uint8_t *AdjMatrix_flat, double alpha,
+                    int i, int N_neurons, uint8_t *AdjMatrix_flat,
                     int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx);
+                    
+void init_izhikevich_parameters(
+    int N, int Ne, int Ni,
+    double *a, double *b, double *c, double *d
+);
+
+void build_weight_matrix(
+    const uint8_t *A,
+    double *S,
+    int N, int Ne, int Ni,
+    double max_exc_weight,
+    double max_inh_weight
+);
+
+int make_output_filename(
+    const char *adj_filename,
+    double max_exc_weight,
+    char *out_filename,
+    int out_size
+);
+
+int simulate_izhikevich(
+    const uint8_t *A,
+    int N,
+    int SIM_TIME,
+    double max_exc_weight,
+    double max_inh_weight,
+    double noise_max,
+    const char *output_filename
+);
 //************************************

@@ -7,6 +7,19 @@
 #include <stdbool.h>
 #include <float.h>
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#define MKDIR(path) mkdir(path, 0777)
+#endif
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 
 #define MAX_STRING_LENGTH 100000
@@ -43,6 +56,39 @@ bool new_axon_intersection_noPBC2D(double cx, double cy, double dendrite_diamete
                                 double dx, double dy);
 void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vector_y, double *dx, double *dy,
                        double L, double *end_segment_vector_x, double *end_segment_vector_y, double *X, double *Y,
-                       double *dendrites_diameters, int i, int N_neurons, uint8_t *AdjMatrix_flat, double alpha,
+                       double *dendrites_diameters, int i, int N_neurons, uint8_t *AdjMatrix_flat,
                        int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx);
+
+int get_matrix_size(const char *filename);
+int load_adjacency_matrix(const char *filename, uint8_t *AdjMatrix_flat, int N);
+
+void init_izhikevich_parameters(
+    int N, int Ne, int Ni,
+    double *a, double *b, double *c, double *d
+);
+
+void build_weight_matrix(
+    const uint8_t *A,
+    double *S,
+    int N, int Ne, int Ni,
+    double max_exc_weight,
+    double max_inh_weight
+);
+
+int make_output_filename(
+    const char *adj_filename,
+    double max_exc_weight,
+    char *out_filename,
+    int out_size
+);
+
+int simulate_izhikevich(
+    const uint8_t *A,
+    int N,
+    int SIM_TIME,
+    double max_exc_weight,
+    double max_inh_weight,
+    double noise_max,
+    const char *output_filename
+);
 //************************************

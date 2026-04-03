@@ -3,12 +3,15 @@ import numpy as np
 from pathlib import Path
 from pypalettes import load_cmap
 import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.signal import find_peaks, savgol_filter
+
 
 def load_neuron_params(filename, nrows_skiped=14):
         data = np.loadtxt(filename, skiprows=nrows_skiped)
         return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4]
 
-def run_2D_tune_positions(parameters2D, show_prints=True):
+def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_control = True):
 
     if parameters2D["agg"] == 0:
         filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
@@ -22,11 +25,11 @@ def run_2D_tune_positions(parameters2D, show_prints=True):
     # =========================
 
     if filepath.exists():
-        if show_prints:
+        if show_prints_control:
             print("Configuration already exists:", filename)
 
     else:
-        if show_prints:
+        if show_prints_control:
             print("Creating configuration:", filename)
 
         result = subprocess.run([
@@ -45,13 +48,13 @@ def run_2D_tune_positions(parameters2D, show_prints=True):
             str(parameters2D["BC_type"])
         ], capture_output=True, text=True)
 
-        if show_prints:
+        if show_prints_c:
             print(result.stdout)
             print(result.stderr)
 
     return filename
 
-def create_network2D(parameters2D, alphas, show_prints = True):
+def create_network2D(parameters2D, show_prints_c = True, show_prints_control = True):
     
     if parameters2D["agg"] == 0:
         filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
@@ -60,40 +63,66 @@ def create_network2D(parameters2D, alphas, show_prints = True):
 
     # --------------------------------
 
-    output_filenames = []
-    for a in alphas:
-            if parameters2D["agg"] == 0:
-                output_filenames.append(f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{a:.3f}.txt")
-            else:
-                output_filenames.append(f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{a:.3f}.txt")
+    if parameters2D["agg"] == 0:
+        output_filename = f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+    else:
+        output_filename = f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+    
+    filepath = Path(output_filename)
+    if filepath.exists():
+        if show_prints_control:
+            print("Configuration already exists:", output_filename)
+    else:
+        if show_prints_control:
+            print("Creating configuration:", output_filename)
 
-    output_filepaths = []
-
-    for out_filename in output_filenames:
-        filepath = Path(out_filename)
-        output_filepaths.append(filepath)
-
-    # print("Output filepaths:", output_filepaths)
-
-    for filepath, a in zip(output_filepaths, alphas):
-        if filepath.exists():
-            if show_prints:
-                print("Configuration already exists:", filepath)
-        else:
-            if show_prints:
-                print("Creating configuration:", filepath)
-
-            result = subprocess.run(["./2D_create_network.exe", f"{a:.3f}", filename],
-            capture_output=True,
-            text=True)
-            
-            if show_prints:
-                print(output_filenames)
-
-                print(result.stdout)
-                print(result.stderr)
+        result = subprocess.run(["./2D_create_network.exe", filename],
+        capture_output=True,
+        text=True)
         
-    return output_filenames
+        if show_prints_c:
+            print(result.stdout)
+            print(result.stderr)
+
+    return output_filename
+
+def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints=True):
+
+    if parameters2D["agg"] == 0:
+        filename = f"2D_dynamics/2D_dynamics_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+    else:
+        filename = f"2D_dynamics/2D_dynamics_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+
+    path = Path(filename)
+    if path.exists():
+        if show_prints:
+            print("Dynamics already exists:", filename)
+    else:
+        result = subprocess.run([
+            "./2D_dynamics.exe",
+            parametersDynamics["out_filename"],
+            str(parametersDynamics["max_exc_weight"]),
+            str(parametersDynamics["max_inh_weight"]),
+            str(parametersDynamics["noise_max"]),
+            str(parametersDynamics["sim_time"]),
+            str(parametersDynamics["seed"])
+        ], capture_output=True, text=True)
+
+        if show_prints:
+            print(result.stdout)
+            print(result.stderr)
+    
+    return filename
+    
+def load_firings(path):
+    # Cargar ignorando la primera línea (# time neuron)
+    data = np.loadtxt(path, comments="#")
+
+    # Separar columnas
+    firings_t = data[:, 0].astype(int)
+    firings_i = data[:, 1].astype(int)
+
+    return firings_t, firings_i
 
 def neuron_map_gini2D(filename, parameters2D):
 
@@ -247,7 +276,7 @@ def run_3D_tune_positions(parameters3D, show_prints=True):
         
     return filename
 
-def neuron_map_adj2D(filename_in, filename_out, parameters2D, n_grid=20):
+def neuron_map_adj2D(filename_in, A, parameters2D, n_grid=20):
 
     sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
@@ -255,7 +284,6 @@ def neuron_map_adj2D(filename_in, filename_out, parameters2D, n_grid=20):
     # CARGA DE DATOS
     # =========================
     X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(filename_in)
-    A = load_A(filename_out)
 
     # =========================
     # DOMINIO ESPACIAL
@@ -321,7 +349,7 @@ def neuron_map_adj2D(filename_in, filename_out, parameters2D, n_grid=20):
     plt.tight_layout()
     plt.show()
 
-def create_network3D(parameters3D, alphas, show_prints = True):
+def create_network3D(parameters3D, show_prints = True):
 
     if parameters3D["agg"] == 0:
         filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
@@ -330,37 +358,28 @@ def create_network3D(parameters3D, alphas, show_prints = True):
 
     # --------------------------------
 
-    output_filenames = []
-    for a in alphas:
-            if parameters3D["agg"] == 0:
-                output_filenames.append(f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{a:.3f}.txt")
-            else:
-                output_filenames.append(f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{a:.3f}.txt")
-
-    output_filepaths = []
-
-    for out_filename in output_filenames:
-        filepath = Path(out_filename)
-        output_filepaths.append(filepath)
-
-    # print("Output filepaths:", output_filepaths)
-
-    for filepath, a in zip(output_filepaths, alphas):
-        if filepath.exists():
-            if show_prints:
-                print("Configuration already exists:", filepath)
-        else:
-            if show_prints:
-                print("Creating configuration:", filepath)
-
-            result = subprocess.run(["./3D_create_network.exe", f"{a:.3f}", filename],
-            capture_output=True,
-            text=True)
-            if show_prints:
-                print(result.stdout)
-                print(result.stderr)
+    if parameters3D["agg"] == 0:
+        output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+    else:
+        output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     
-    return output_filenames
+    filepath = Path(output_filename)
+    if filepath.exists():
+        if show_prints:
+            print("Configuration already exists:", output_filename)
+    else:
+        if show_prints:
+            print("Creating configuration:", output_filename)
+
+        result = subprocess.run(["./3D_create_network.exe", filename],
+        capture_output=True,
+        text=True)
+        
+        if show_prints:
+            print(result.stdout)
+            print(result.stderr)
+
+    return output_filename
 
 def load_neuron_params_3D(filename, nrows_skiped=15):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
@@ -692,3 +711,140 @@ def Gini_coefficient(X, Y, n_grid, xmin, xmax, ymin, ymax):
     area_between = np.trapezoid(G-bins, bins)
     Gini = 2*area_between
     return Gini
+
+
+def modify_A_alpha(A, alpha, parameters2D, seed=None):
+    """
+    A: matriz de conteos (número de intersecciones m_ij)
+    alpha: probabilidad de éxito por intento
+    parameters2D: diccionario con los parámetros de la red 2D (necesarios para calcular la probabilidad efectiva)
+    seed: semilla para reproducibilidad (opcional)
+    """
+
+    if not (0 <= alpha <= 1):
+        raise ValueError("alpha debe estar entre 0 y 1")
+
+    rng = np.random.default_rng(seed)
+
+    # Probabilidad efectiva por par (i,j)
+    P = 1.0 - (1.0 - alpha) ** A
+
+    # Sorteo Bernoulli con esa probabilidad
+    A_new = (rng.random(A.shape) < P).astype(np.uint8)
+
+    # Quitar autoconexiones
+    np.fill_diagonal(A_new, 0)
+
+    if parameters2D["agg"] == 0:
+        output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
+    else:
+        output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
+
+    pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+
+    return A_new, output_filename
+
+def detect_peaks_adaptive(signal, time=None, smooth=True,
+                          window_length=11, polyorder=3,
+                          prominence_factor=0.25,
+                          min_distance=None,
+                          min_width=None):
+    """
+    Detecta picos de forma adaptativa usando prominencia relativa
+    a la escala de la propia señal.
+
+    Parámetros
+    ----------
+    signal : array-like
+        Señal de entrada.
+    time : array-like or None
+        Vector de tiempos. Si se proporciona, min_distance y min_width
+        se interpretan en las mismas unidades que time.
+    smooth : bool
+        Si True, aplica suavizado Savitzky-Golay antes de detectar.
+    window_length : int
+        Tamaño de ventana del suavizado (debe acabar siendo impar).
+    polyorder : int
+        Orden del polinomio para Savitzky-Golay.
+    prominence_factor : float
+        Factor multiplicativo sobre una escala robusta de la señal
+        (p90 - p10) para fijar la prominencia mínima.
+    min_distance : float or None
+        Distancia mínima entre picos, en unidades de time si time se da.
+    min_width : float or None
+        Anchura mínima de pico, en unidades de time si time se da.
+
+    Devuelve
+    --------
+    peaks : np.ndarray
+        Índices de los picos detectados.
+    properties : dict
+        Propiedades devueltas por scipy.signal.find_peaks.
+    x_used : np.ndarray
+        Señal realmente usada para detectar (suavizada o no).
+    """
+
+    x = np.asarray(signal, dtype=float).copy()
+
+    if x.ndim != 1:
+        raise ValueError("signal debe ser un array 1D")
+
+    if len(x) < 3:
+        return np.array([], dtype=int), {}, x
+
+    # 1. Suavizado opcional
+    if smooth:
+        wl = min(window_length, len(x))
+        if wl % 2 == 0:
+            wl -= 1
+        if wl < 3:
+            wl = 3
+
+        po = min(polyorder, wl - 1)
+
+        if wl >= 3 and po >= 1:
+            x = savgol_filter(x, window_length=wl, polyorder=po)
+
+    median = np.median(x)
+    mad = np.median(np.abs(x - median))
+    scale = mad
+
+    # Si la señal es casi constante
+    if mad <= 0:
+        return np.array([], dtype=int), {}, x
+
+    # 3. Conversión de min_distance y min_width a muestras
+    distance_samples = 1
+    width_samples = None
+
+    if time is not None:
+        time = np.asarray(time, dtype=float)
+        if len(time) != len(x):
+            raise ValueError("time y signal deben tener la misma longitud")
+
+        dt = time[1] - time[0]
+        if dt <= 0:
+            raise ValueError("time debe ser estrictamente creciente")
+
+        if min_distance is not None:
+            distance_samples = max(1, int(min_distance / dt))
+
+        if min_width is not None:
+            width_samples = max(1, int(min_width / dt))
+    else:
+        if min_distance is not None:
+            distance_samples = max(1, int(min_distance))
+        if min_width is not None:
+            width_samples = max(1, int(min_width))
+
+    baseline = np.percentile(x, 30)
+
+    peaks, properties = find_peaks(
+        x,
+        prominence=5 * mad,
+        height=baseline + 4 * mad,
+        distance=distance_samples,
+        width=width_samples
+    )
+
+    return peaks, properties, x
