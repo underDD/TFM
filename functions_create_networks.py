@@ -113,6 +113,34 @@ def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints=True):
             print(result.stderr)
     
     return filename
+
+def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints=True):
+
+    if parameters3D["agg"] == 0:
+        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+    else:
+        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+
+    path = Path(filename)
+    if path.exists():
+        if show_prints:
+            print("Dynamics already exists:", filename)
+    else:
+        result = subprocess.run([
+            "./3D_dynamics.exe",
+            parametersDynamics["out_filename"],
+            str(parametersDynamics["max_exc_weight"]),
+            str(parametersDynamics["max_inh_weight"]),
+            str(parametersDynamics["noise_max"]),
+            str(parametersDynamics["sim_time"]),
+            str(parametersDynamics["seed"])
+        ], capture_output=True, text=True)
+
+        if show_prints:
+            print(result.stdout)
+            print(result.stderr)
+    
+    return filename
     
 def load_firings(path):
     # Cargar ignorando la primera línea (# time neuron)
@@ -234,7 +262,7 @@ def neuron_map_gini2D(filename, parameters2D):
     plt.tight_layout()
     plt.show()
 
-def run_3D_tune_positions(parameters3D, show_prints=True):
+def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_control = True):
     if parameters3D["agg"] == 0:
         filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
@@ -246,11 +274,11 @@ def run_3D_tune_positions(parameters3D, show_prints=True):
     # =========================
 
     if filepath.exists():
-        if show_prints:
+        if show_prints_control:
             print("Configuration already exists:", filename)
 
     else:
-        if show_prints:
+        if show_prints_control:
             print("Creating configuration:", filename)
 
         result = subprocess.run([
@@ -270,7 +298,7 @@ def run_3D_tune_positions(parameters3D, show_prints=True):
             str(parameters3D["BC_type"])
         ], capture_output=True, text=True)
 
-        if show_prints:
+        if show_prints_c:
             print(result.stdout)
             print(result.stderr)
         
@@ -349,7 +377,7 @@ def neuron_map_adj2D(filename_in, A, parameters2D, n_grid=20):
     plt.tight_layout()
     plt.show()
 
-def create_network3D(parameters3D, show_prints = True):
+def create_network3D(parameters3D, show_prints_c = False, show_prints_control = True):
 
     if parameters3D["agg"] == 0:
         filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
@@ -365,17 +393,17 @@ def create_network3D(parameters3D, show_prints = True):
     
     filepath = Path(output_filename)
     if filepath.exists():
-        if show_prints:
+        if show_prints_control:
             print("Configuration already exists:", output_filename)
     else:
-        if show_prints:
+        if show_prints_control:
             print("Creating configuration:", output_filename)
 
         result = subprocess.run(["./3D_create_network.exe", filename],
         capture_output=True,
         text=True)
         
-        if show_prints:
+        if show_prints_c:
             print(result.stdout)
             print(result.stderr)
 
@@ -533,7 +561,7 @@ def load_A(path):
     np.fill_diagonal(A, 0)
     return A
 
-def neuron_map_adj3D(filename_in, filename_out, parameters3D):
+def neuron_map_adj3D(filename_in, A, parameters3D):
 
     sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
@@ -541,7 +569,7 @@ def neuron_map_adj3D(filename_in, filename_out, parameters3D):
     # CARGA
     # =========================
     X, Y, Z, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params_3D(filename_in)
-    A = load_A(filename_out)
+    # A = load_A(filename_out)
 
     # =========================
     # DOMINIO
@@ -713,35 +741,76 @@ def Gini_coefficient(X, Y, n_grid, xmin, xmax, ymin, ymax):
     return Gini
 
 
-def modify_A_alpha(A, alpha, parameters2D, seed=None):
+def modify_A_alpha2D(A, alpha, parameters2D, seed=None):
     """
     A: matriz de conteos (número de intersecciones m_ij)
     alpha: probabilidad de éxito por intento
     parameters2D: diccionario con los parámetros de la red 2D (necesarios para calcular la probabilidad efectiva)
     seed: semilla para reproducibilidad (opcional)
     """
-
-    if not (0 <= alpha <= 1):
-        raise ValueError("alpha debe estar entre 0 y 1")
-
-    rng = np.random.default_rng(seed)
-
-    # Probabilidad efectiva por par (i,j)
-    P = 1.0 - (1.0 - alpha) ** A
-
-    # Sorteo Bernoulli con esa probabilidad
-    A_new = (rng.random(A.shape) < P).astype(np.uint8)
-
-    # Quitar autoconexiones
-    np.fill_diagonal(A_new, 0)
-
     if parameters2D["agg"] == 0:
         output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
     else:
         output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
 
-    pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+    path = Path(output_filename)
+    if path.exists():
+        print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
+        A_new = load_A(output_filename)
+    else:
+        if not (0 <= alpha <= 1):
+            raise ValueError("alpha debe estar entre 0 y 1")
 
+        rng = np.random.default_rng(seed)
+
+        # Probabilidad efectiva por par (i,j)
+        P = 1.0 - (1.0 - alpha) ** A
+
+        # Sorteo Bernoulli con esa probabilidad
+        A_new = (rng.random(A.shape) < P).astype(np.uint8)
+
+        # Quitar autoconexiones
+        np.fill_diagonal(A_new, 0)
+
+        pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+
+    return A_new, output_filename
+
+
+def modify_A_alpha3D(A, alpha, parameters3D, seed=None):
+    """
+    A: matriz de conteos (número de intersecciones m_ij)
+    alpha: probabilidad de éxito por intento
+    parameters3D: diccionario con los parámetros de la red 3D (necesarios para calcular la probabilidad efectiva)
+    seed: semilla para reproducibilidad (opcional)
+    """
+    if parameters3D["agg"] == 0:
+        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
+    else:
+        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
+
+    path = Path(output_filename)
+    if path.exists():
+        print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
+        A_new = load_A(output_filename)
+    else:
+        if not (0 <= alpha <= 1):
+            raise ValueError("alpha debe estar entre 0 y 1")
+
+        rng = np.random.default_rng(seed)
+
+        # Probabilidad efectiva por par (i,j)
+        P = 1.0 - (1.0 - alpha) ** A
+
+        # Sorteo Bernoulli con esa probabilidad
+        A_new = (rng.random(A.shape) < P).astype(np.uint8)
+
+        # Quitar autoconexiones
+        np.fill_diagonal(A_new, 0)
+
+
+        pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+    
     return A_new, output_filename
 
 def detect_peaks_adaptive(signal, time=None, smooth=True,

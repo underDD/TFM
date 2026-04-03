@@ -558,7 +558,7 @@ int make_output_filename(
     int written = snprintf(
         out_filename,
         out_size,
-        "2D_dynamics/%s_exc%.3f.txt",
+        "3D_dynamics/%s_exc%.3f.txt",
         stem,
         max_exc_weight
     );

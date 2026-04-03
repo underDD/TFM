@@ -54,7 +54,10 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
                     double *X, double *Y, double *Z, double *dendrites_diameters,
                     int i, int N_neurons, uint8_t *AdjMatrix_flat,
                     int *trials, int *links, FILE *axon_simulation, int neuron_idx, int segment_idx);
-                    
+
+int get_matrix_size(const char *filename);
+int load_adjacency_matrix(const char *filename, uint8_t *AdjMatrix_flat, int N);
+
 void init_izhikevich_parameters(
     int N, int Ne, int Ni,
     double *a, double *b, double *c, double *d

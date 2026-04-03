@@ -202,15 +202,14 @@ int main(int argc, char *argv[]) {
             if (strcmp(BC_type, "PBC") == 0){
                 for(int j = 0; j < N; j++){
                     if (i != j){
-                        if(AdjMatrix_flat[i*N + j] == 0){
+                    
                             if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, dx, dy, dz)){
                                 trials ++;
                                  // Connection probability alpha
-                                AdjMatrix_flat[i*N + j] = 1;
+                                AdjMatrix_flat[i*N + j] += 1;
                                 links ++;
                                 
                             }
-                        }
                     }
                 }
                 end_segment_vector_x = initial_segment_vector_x + dx;

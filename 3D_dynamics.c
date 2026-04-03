@@ -1,6 +1,9 @@
 #include "3D_head.h"
 
 int main(int argc, char *argv[]) {
+
+    ini_ran(time(NULL));
+
     if (argc < 7) {
         fprintf(stderr,
             "Usage:\n"
@@ -36,7 +39,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char output_filename[1024];
+    char output_filename[MAX_STRING_LENGTH];
     if (make_output_filename(adj_filename, max_exc_weight, output_filename, sizeof(output_filename)) != 0) {
         free(A);
         return 1;
