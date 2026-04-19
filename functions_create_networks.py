@@ -11,7 +11,7 @@ def load_neuron_params(filename, nrows_skiped=14):
         data = np.loadtxt(filename, skiprows=nrows_skiped)
         return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4]
 
-def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_control = True):
+def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_control = True, new_sim = False):
 
     if parameters2D["agg"] == 0:
         filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
@@ -24,7 +24,7 @@ def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_contr
     # COMPROBAR SI EXISTE
     # =========================
 
-    if filepath.exists():
+    if filepath.exists() and (new_sim == False):
         if show_prints_control:
             print("Configuration already exists:", filename)
 
@@ -54,7 +54,7 @@ def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_contr
 
     return filename
 
-def create_network2D(parameters2D, show_prints_c = True, show_prints_control = True):
+def create_network2D(parameters2D, show_prints_c = False, show_prints_control = True, new_sim = False):
     
     if parameters2D["agg"] == 0:
         filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
@@ -67,9 +67,9 @@ def create_network2D(parameters2D, show_prints_c = True, show_prints_control = T
         output_filename = f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
     else:
         output_filename = f"2D_created_networks/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
-    
+
     filepath = Path(output_filename)
-    if filepath.exists():
+    if filepath.exists() and (new_sim == False):
         if show_prints_control:
             print("Configuration already exists:", output_filename)
     else:
@@ -86,18 +86,21 @@ def create_network2D(parameters2D, show_prints_c = True, show_prints_control = T
 
     return output_filename
 
-def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints=True):
+def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints_c=False, show_prints_control=True, sim_number=6, new_sim=False):
 
     if parameters2D["agg"] == 0:
-        filename = f"2D_dynamics/2D_dynamics_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+        filename = f"2D_dynamics/2D_dynamics_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
     else:
-        filename = f"2D_dynamics/2D_dynamics_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+        filename = f"2D_dynamics/2D_dynamics_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
 
     path = Path(filename)
-    if path.exists():
-        if show_prints:
+    if path.exists() and (new_sim == False):
+        if show_prints_control:
             print("Dynamics already exists:", filename)
     else:
+        if show_prints_control:
+            print("Simulating dynamics:", filename)
+
         result = subprocess.run([
             "./2D_dynamics.exe",
             parametersDynamics["out_filename"],
@@ -105,16 +108,17 @@ def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints=True):
             str(parametersDynamics["max_inh_weight"]),
             str(parametersDynamics["noise_max"]),
             str(parametersDynamics["sim_time"]),
-            str(parametersDynamics["seed"])
-        ], capture_output=True, text=True)
+            str(parametersDynamics["seed"]),
+            str(sim_number)
+        ], capture_output=False, text=False)
 
-        if show_prints:
+        if show_prints_c:
             print(result.stdout)
             print(result.stderr)
     
     return filename
 
-def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints=True):
+def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints_c=False, show_prints_control=True, new_sim=False):
 
     if parameters3D["agg"] == 0:
         filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
@@ -122,10 +126,13 @@ def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints=True):
         filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
 
     path = Path(filename)
-    if path.exists():
-        if show_prints:
+    if path.exists() and (new_sim == False):
+        if show_prints_control:
             print("Dynamics already exists:", filename)
     else:
+        if show_prints_control:
+            print("Simulating dynamics:", filename)
+
         result = subprocess.run([
             "./3D_dynamics.exe",
             parametersDynamics["out_filename"],
@@ -136,7 +143,7 @@ def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints=True):
             str(parametersDynamics["seed"])
         ], capture_output=True, text=True)
 
-        if show_prints:
+        if show_prints_c:
             print(result.stdout)
             print(result.stderr)
     
@@ -207,14 +214,14 @@ def neuron_map_gini2D(filename, parameters2D):
     ax = axs[0]
 
 
-    ax.set_xlabel('X (mm)', fontsize=16, labelpad=10)
-    ax.set_ylabel('Y (mm)', fontsize=16, labelpad=10)
+    # ax.set_xlabel('X (mm)', fontsize=16, labelpad=10)
+    # ax.set_ylabel('Y (mm)', fontsize=16, labelpad=10)
 
     ax.set_xlim(-L/2, L/2)
     ax.set_ylim(-L/2, L/2)
 
-    ax.set_xticks(ax.get_xticks())
-    ax.set_yticks(ax.get_yticks())
+    ax.set_xticks([])
+    ax.set_yticks([])
 
     x_grid = np.linspace(xmin, xmax, n_grid+1)
     y_grid = np.linspace(ymin, ymax, n_grid+1)
@@ -236,6 +243,7 @@ def neuron_map_gini2D(filename, parameters2D):
 
     ax.scatter(X, Y, s=7, color='firebrick', zorder=3)
     ax.tick_params(axis='both', which='major', labelsize = 14)
+    ax.tick_params(axis='both', which='minor', labelsize = 0)
 
     # ax.set_title("Neuron positions")
 
@@ -246,23 +254,26 @@ def neuron_map_gini2D(filename, parameters2D):
     ax = axs[1]
 
     ax.plot(bins, G, color=sunset2(0.1), marker='o', markersize=3, lw=1)
-    ax.plot(bins, bins, color='black', lw=2, label="Perfect equality")
+    ax.plot(bins, bins, color='black', lw=2)
 
     ax.legend(fontsize=15, loc='lower right', frameon=False)
-    ax.text(0.75, 0.15, r"$\Delta = $" + f"{Gini:.3f}", fontsize=20, ha='center', va='center', transform=ax.transAxes)
+    # ax.text(0.75, 0.15, r"$\Lambda = $" + f"{Gini:.3f}", fontsize=30, ha='center', va='center', transform=ax.transAxes)
 
-    ax.set_ylabel('Occupation', fontsize=16, labelpad=10)
+    # ax.set_ylabel('Occupation', fontsize=16, labelpad=10)
 
     ax.tick_params(axis='both', which='major', labelsize = 14)
+    ax.set_xticks([])
+    ax.set_yticks([])
 
-    ax.set_xlabel('Cumulative proportion of grid cells', fontsize=16, labelpad=10)
+    # ax.set_xlabel('Cumulative proportion of grid cells', fontsize=16, labelpad=10)
 
     # ax.set_title(f"Gini coefficient = {Gini:.3f}", fontsize=16)
 
     plt.tight_layout()
+    plt.savefig("Gini_things/2D_neuron_map_gini.svg", dpi=300, bbox_inches='tight')
     plt.show()
 
-def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_control = True):
+def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_control = True, new_sim = False):
     if parameters3D["agg"] == 0:
         filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
@@ -273,7 +284,7 @@ def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_contr
     # COMPROBAR SI EXISTE
     # =========================
 
-    if filepath.exists():
+    if filepath.exists() and not new_sim:
         if show_prints_control:
             print("Configuration already exists:", filename)
 
@@ -377,7 +388,7 @@ def neuron_map_adj2D(filename_in, A, parameters2D, n_grid=20):
     plt.tight_layout()
     plt.show()
 
-def create_network3D(parameters3D, show_prints_c = False, show_prints_control = True):
+def create_network3D(parameters3D, show_prints_c = False, show_prints_control = True, new_sim = False):
 
     if parameters3D["agg"] == 0:
         filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
@@ -392,7 +403,7 @@ def create_network3D(parameters3D, show_prints_c = False, show_prints_control = 
         output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     
     filepath = Path(output_filename)
-    if filepath.exists():
+    if filepath.exists() and not new_sim:
         if show_prints_control:
             print("Configuration already exists:", output_filename)
     else:
@@ -630,92 +641,128 @@ from scipy.signal import find_peaks
 # =========================================================
 # FUNCIÓN PARA CALCULAR GNA A PARTIR DEL RASTER
 # =========================================================
-
-def compute_GNA_from_raster(firings_t, firings_i, N, SIM_TIME, W=25, indices_are_1_based=True):
-    """
-    Calcula la actividad global de red (GNA) como:
-        GNA(t) = nº de neuronas activas en la ventana / N
-
-    donde una neurona cuenta solo UNA vez por ventana,
-    aunque dispare varios spikes dentro de ella.
-
-    Parámetros
-    ----------
-    firings_t : array
-        Tiempos de disparo (en ms, enteros)
-    firings_i : array
-        Índices de neurona asociados a cada spike
-    N : int
-        Número total de neuronas
-    SIM_TIME : int
-        Tiempo total de simulación (ms)
-    W : int
-        Tamaño de la ventana deslizante (ms)
-    indices_are_1_based : bool
-        True si firings_i va de 1..N
-        False si firings_i va de 0..N-1
-
-    Devuelve
-    --------
-    GNA : array de longitud SIM_TIME
-        Fracción de neuronas activas en cada instante
-    GNA_percent : array de longitud SIM_TIME
-        Igual que GNA pero en %
-    active_neurons_count : array de longitud SIM_TIME
-        Número de neuronas activas en cada instante
-    """
-
+def compute_GNA_from_raster(firings_t, firings_i, N, SIM_TIME, W=25):
+    
     firings_t = np.asarray(firings_t, dtype=int)
-    firings_i = np.asarray(firings_i, dtype=int)
+    firings_i = np.asarray(firings_i, dtype=int) - 1  # 0-based
+    
+    # Para cada neurona, guardamos el último tiempo en que disparó
+    last_spike = -np.inf * np.ones(N)
+    
+    GNA = np.zeros(SIM_TIME)
+    active_count = 0
+    
+    # Ordenar por tiempo (importante)
+    order = np.argsort(firings_t)
+    firings_t = firings_t[order]
+    firings_i = firings_i[order]
+    
+    idx = 0
+    
+    for t in range(1, SIM_TIME + 1):
+        
+        # Añadir spikes en este tiempo
+        while idx < len(firings_t) and firings_t[idx] == t:
+            neuron = firings_i[idx]
+            
+            # Si estaba inactiva, ahora cuenta
+            if last_spike[neuron] < t - W:
+                active_count += 1
+            
+            last_spike[neuron] = t
+            idx += 1
+        
+        # Quitar neuronas que han dejado de estar activas
+        active_count = np.sum(last_spike >= t - W)
+        
+        GNA[t-1] = active_count / N
+    
+    return GNA
+# def compute_GNA_from_raster(firings_t, firings_i, N, SIM_TIME, W=25, indices_are_1_based=True):
+#     """
+#     Calcula la actividad global de red (GNA) como:
+#         GNA(t) = nº de neuronas activas en la ventana / N
 
-    # Pasar índices a 0-based si están en 1..N
-    if indices_are_1_based:
-        neuron_ids = firings_i - 1
-    else:
-        neuron_ids = firings_i.copy()
+#     donde una neurona cuenta solo UNA vez por ventana,
+#     aunque dispare varios spikes dentro de ella.
 
-    # Filtrar por seguridad spikes fuera de rango
-    valid = (
-        (firings_t >= 1) & (firings_t <= SIM_TIME) &
-        (neuron_ids >= 0) & (neuron_ids < N)
-    )
-    firings_t = firings_t[valid]
-    neuron_ids = neuron_ids[valid]
+#     Parámetros
+#     ----------
+#     firings_t : array
+#         Tiempos de disparo (en ms, enteros)
+#     firings_i : array
+#         Índices de neurona asociados a cada spike
+#     N : int
+#         Número total de neuronas
+#     SIM_TIME : int
+#         Tiempo total de simulación (ms)
+#     W : int
+#         Tamaño de la ventana deslizante (ms)
+#     indices_are_1_based : bool
+#         True si firings_i va de 1..N
+#         False si firings_i va de 0..N-1
 
-    # -----------------------------------------------------
-    # 1) Matriz binaria de actividad: activity[n, t] = 1 si
-    #    la neurona n dispara en el instante t
-    # -----------------------------------------------------
-    activity = np.zeros((N, SIM_TIME), dtype=np.uint8)
+#     Devuelve
+#     --------
+#     GNA : array de longitud SIM_TIME
+#         Fracción de neuronas activas en cada instante
+#     GNA_percent : array de longitud SIM_TIME
+#         Igual que GNA pero en %
+#     active_neurons_count : array de longitud SIM_TIME
+#         Número de neuronas activas en cada instante
+#     """
 
-    # firings_t va de 1..SIM_TIME, así que restamos 1 para indexar 0..SIM_TIME-1
-    activity[neuron_ids, firings_t - 1] = 1
+#     firings_t = np.asarray(firings_t, dtype=int)
+#     firings_i = np.asarray(firings_i, dtype=int)
 
-    # -----------------------------------------------------
-    # 2) Para cada neurona, calculamos si ha estado activa
-    #    al menos una vez dentro de la ventana de tamaño W
-    #
-    #    Usamos convolución temporal por neurona:
-    #    si la suma en la ventana > 0, esa neurona está activa
-    # -----------------------------------------------------
-    kernel = np.ones(W, dtype=int)
+#     # Pasar índices a 0-based si están en 1..N
+#     if indices_are_1_based:
+#         neuron_ids = firings_i - 1
+#     else:
+#         neuron_ids = firings_i.copy()
 
-    active_in_window = np.zeros_like(activity, dtype=np.uint8)
+#     # Filtrar por seguridad spikes fuera de rango
+#     valid = (
+#         (firings_t >= 1) & (firings_t <= SIM_TIME) &
+#         (neuron_ids >= 0) & (neuron_ids < N)
+#     )
+#     firings_t = firings_t[valid]
+#     neuron_ids = neuron_ids[valid]
 
-    for n in range(N):
-        counts_in_window = np.convolve(activity[n], kernel, mode='same')
-        active_in_window[n] = (counts_in_window > 0).astype(np.uint8)
+#     # -----------------------------------------------------
+#     # 1) Matriz binaria de actividad: activity[n, t] = 1 si
+#     #    la neurona n dispara en el instante t
+#     # -----------------------------------------------------
+#     activity = np.zeros((N, SIM_TIME), dtype=np.uint8)
 
-    # -----------------------------------------------------
-    # 3) Número de neuronas activas por instante
-    # -----------------------------------------------------
-    active_neurons_count = np.sum(active_in_window, axis=0)
+#     # firings_t va de 1..SIM_TIME, así que restamos 1 para indexar 0..SIM_TIME-1
+#     activity[neuron_ids, firings_t - 1] = 1
 
-    # Fracción y porcentaje
-    GNA = active_neurons_count / N
-    # GNA_percent = 100 * GNA
+#     # -----------------------------------------------------
+#     # 2) Para cada neurona, calculamos si ha estado activa
+#     #    al menos una vez dentro de la ventana de tamaño W
+#     #
+#     #    Usamos convolución temporal por neurona:
+#     #    si la suma en la ventana > 0, esa neurona está activa
+#     # -----------------------------------------------------
+#     kernel = np.ones(W, dtype=int)
 
-    return GNA, active_neurons_count
+#     active_in_window = np.zeros_like(activity, dtype=np.uint8)
+
+#     for n in range(N):
+#         counts_in_window = np.convolve(activity[n], kernel, mode='same')
+#         active_in_window[n] = (counts_in_window > 0).astype(np.uint8)
+
+#     # -----------------------------------------------------
+#     # 3) Número de neuronas activas por instante
+#     # -----------------------------------------------------
+#     active_neurons_count = np.sum(active_in_window, axis=0)
+
+#     # Fracción y porcentaje
+#     GNA = active_neurons_count / N
+#     # GNA_percent = 100 * GNA
+
+#     return GNA, active_neurons_count
 
 
 def Gini_coefficient(X, Y, n_grid, xmin, xmax, ymin, ymax):
@@ -741,12 +788,13 @@ def Gini_coefficient(X, Y, n_grid, xmin, xmax, ymin, ymax):
     return Gini
 
 
-def modify_A_alpha2D(A, alpha, parameters2D, seed=None):
+def modify_A_alpha2D(A, alpha, parameters2D, seed=None, new_sim = False):
     """
     A: matriz de conteos (número de intersecciones m_ij)
     alpha: probabilidad de éxito por intento
     parameters2D: diccionario con los parámetros de la red 2D (necesarios para calcular la probabilidad efectiva)
     seed: semilla para reproducibilidad (opcional)
+    new_sim: flag para indicar si es una nueva simulación
     """
     if parameters2D["agg"] == 0:
         output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
@@ -754,8 +802,8 @@ def modify_A_alpha2D(A, alpha, parameters2D, seed=None):
         output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
 
     path = Path(output_filename)
-    if path.exists():
-        print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
+    if path.exists() and not new_sim:
+        # print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
         A_new = load_A(output_filename)
     else:
         if not (0 <= alpha <= 1):
@@ -777,12 +825,13 @@ def modify_A_alpha2D(A, alpha, parameters2D, seed=None):
     return A_new, output_filename
 
 
-def modify_A_alpha3D(A, alpha, parameters3D, seed=None):
+def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False):
     """
     A: matriz de conteos (número de intersecciones m_ij)
     alpha: probabilidad de éxito por intento
     parameters3D: diccionario con los parámetros de la red 3D (necesarios para calcular la probabilidad efectiva)
     seed: semilla para reproducibilidad (opcional)
+    new_sim: flag para indicar si es una nueva simulación
     """
     if parameters3D["agg"] == 0:
         output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
@@ -790,7 +839,7 @@ def modify_A_alpha3D(A, alpha, parameters3D, seed=None):
         output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
 
     path = Path(output_filename)
-    if path.exists():
+    if path.exists() and not new_sim:
         print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
         A_new = load_A(output_filename)
     else:
@@ -917,3 +966,161 @@ def detect_peaks_adaptive(signal, time=None, smooth=True,
     )
 
     return peaks, properties, x
+
+
+def build_temporal_neuron_series(filename, time_window=25, SIM_TIME = 5000, N=1000):
+
+    data = np.loadtxt(filename, skiprows=1)
+    firings_t = data[:, 0].astype(int)
+    firings_i = data[:, 1].astype(int)
+
+
+    neurons_ids = np.arange(1, N+1)  # IDs de neuronas de 1 a N
+    times = np.arange(0, SIM_TIME, time_window)
+
+    # Quiero pasar de (t,i) a una matriz M de tamaño (len(times), N) donde M[j,n] = 1 si la neurona n ha disparado al menos una vez en el intervalo [times[j], times[j]+time_window)    
+    M = np.zeros((len(times), N), dtype=np.uint8)
+
+    for t, neuron_id in zip(firings_t, firings_i):
+
+        row = t // time_window
+        col = neuron_id - 1  # neuronas de 1..N a índices de 0..N-1
+
+        if neuron_id < 1 or neuron_id > N:
+            continue
+        if row >= len(times):
+            continue
+
+        M[row, col] = 1
+
+    return M, times
+
+def pearson_correlation(x, y):
+
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+
+    if x.shape != y.shape:
+        raise ValueError("x e y deben tener la misma forma")
+
+    if x.ndim != 1:
+        raise ValueError("x e y deben ser vectores 1D")
+
+    n = len(x)
+    if n < 2:
+        return np.nan
+
+    mean_x = np.mean(x)
+    mean_y = np.mean(y)
+
+    numerator = np.sum((x - mean_x) * (y - mean_y))
+    denominator = np.sqrt(np.sum((x - mean_x) ** 2) * np.sum((y - mean_y) ** 2))
+
+    if denominator == 0:
+        return np.nan
+
+    r = numerator / denominator
+    return r
+    
+def pearson_corr_matrix(M):
+
+    N = M.shape[1]
+    corr_matrix = np.zeros((N, N), dtype=float)
+
+    for i in range(N):
+        for j in range(i, N):
+            r = pearson_correlation(M[:, i], M[:, j])
+            corr_matrix[i, j] = r
+            corr_matrix[j, i] = r
+
+    return corr_matrix
+
+def plot_raster_interleaved_inhibitory(
+    firings_t,
+    firings_i,
+    ax=None,
+    inhibitory_fraction=0.20,
+    color=None,
+    s=7,
+    xlabel='Time (ms)',
+    ylabel='Neuron',
+    fontsize=16,
+    ticksize=14
+):
+    """
+    Plotea un raster reorganizando las neuronas inhibitorias para que no aparezcan
+    todas agrupadas arriba, sino intercaladas entre las excitadoras.
+
+    Supone que:
+    - los índices de neurona empiezan en 1
+    - las últimas inhibitory_fraction*N neuronas son inhibitorias
+
+    Parámetros
+    ----------
+    firings_t : array-like
+        Tiempos de disparo.
+    firings_i : array-like
+        Índices de neurona (1-based).
+    ax : matplotlib.axes.Axes, opcional
+        Eje sobre el que dibujar. Si es None, crea figura nueva.
+    inhibitory_fraction : float
+        Fracción de neuronas inhibitorias. Por defecto 0.20.
+    color : color matplotlib, opcional
+        Color de los puntos.
+    s : float
+        Tamaño de los puntos del scatter.
+    """
+
+    firings_t = np.asarray(firings_t)
+    firings_i = np.asarray(firings_i, dtype=int)
+
+    if firings_i.ndim != 1 or firings_t.ndim != 1:
+        raise ValueError("firings_t y firings_i deben ser arrays 1D.")
+    if len(firings_t) != len(firings_i):
+        raise ValueError("firings_t y firings_i deben tener la misma longitud.")
+    if np.any(firings_i < 1):
+        raise ValueError("Se esperan índices de neurona empezando en 1.")
+
+    # Número total de neuronas inferido del raster
+    N = int(np.max(firings_i))
+
+    # Separación excitadoras / inhibitorias
+    N_exc = int(round((1.0 - inhibitory_fraction) * N))
+    N_inh = N - N_exc
+
+    # Índices originales en base 0
+    exc = np.arange(0, N_exc)          # excitadoras
+    inh = np.arange(N_exc, N)          # inhibitorias
+
+    # Construimos un nuevo orden intercalando inhibitorias uniformemente
+    new_order = []
+    ratio = N_exc / N_inh if N_inh > 0 else np.inf
+
+    e_idx = 0
+    i_idx = 0
+
+    while e_idx < N_exc or i_idx < N_inh:
+        target_exc = int(round((i_idx + 1) * ratio)) if N_inh > 0 else N_exc
+
+        while e_idx < min(target_exc, N_exc):
+            new_order.append(exc[e_idx])
+            e_idx += 1
+
+        if i_idx < N_inh:
+            new_order.append(inh[i_idx])
+            i_idx += 1
+
+    while e_idx < N_exc:
+        new_order.append(exc[e_idx])
+        e_idx += 1
+
+    new_order = np.array(new_order, dtype=int)
+
+    # Mapa: índice viejo -> índice nuevo
+    old_to_new = np.empty(N, dtype=int)
+    old_to_new[new_order] = np.arange(N)
+
+    # Reindexar firings_i (1-based -> 0-based -> reordenado -> 1-based)
+    firings_i_reordered = old_to_new[firings_i - 1] + 1
+
+    return firings_i_reordered, new_order

@@ -4,7 +4,7 @@ int main(int argc, char *argv[]) {
 
     ini_ran(time(NULL));
     
-    if (argc < 7) {
+    if (argc < 8) {
         fprintf(stderr,
             "Usage:\n"
             "%s adjacency_file max_exc_weight max_inh_weight noise_max sim_time seed\n",
@@ -19,8 +19,9 @@ int main(int argc, char *argv[]) {
     double noise_max = atof(argv[4]);
     int SIM_TIME = atoi(argv[5]);
     unsigned int seed = (unsigned int)atoi(argv[6]);
+    int sim_number = atoi(argv[7]);
 
-    srand(seed);
+    // srand(seed);
 
     int N = get_matrix_size(adj_filename);
     if (N <= 0) {
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
     }
 
     char output_filename[1024];
-    if (make_output_filename(adj_filename, max_exc_weight, output_filename, sizeof(output_filename)) != 0) {
+    if (make_output_filename(adj_filename, max_exc_weight, output_filename, sizeof(output_filename), sim_number) != 0) {
         free(A);
         return 1;
     }

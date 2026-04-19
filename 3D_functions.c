@@ -524,7 +524,8 @@ int make_output_filename(
     const char *adj_filename,
     double max_exc_weight,
     char *out_filename,
-    int out_size
+    int out_size, 
+    int sim_number
 ) {
     MKDIR("3D_dynamics");
 
@@ -558,9 +559,10 @@ int make_output_filename(
     int written = snprintf(
         out_filename,
         out_size,
-        "3D_dynamics/%s_exc%.3f.txt",
+        "3D_dynamics/%s_exc%.3f_sim%d.txt",
         stem,
-        max_exc_weight
+        max_exc_weight,
+        sim_number
     );
 
     if (written < 0 || written >= out_size) {

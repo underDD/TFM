@@ -79,7 +79,8 @@ int make_output_filename(
     const char *adj_filename,
     double max_exc_weight,
     char *out_filename,
-    int out_size
+    int out_size, 
+    int sim_number
 );
 
 int simulate_izhikevich(
