@@ -5,6 +5,9 @@ from pypalettes import load_cmap
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.signal import find_peaks, savgol_filter
+import networkx as nx
+
+sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
 
 def load_neuron_params(filename, nrows_skiped=14):
@@ -118,12 +121,12 @@ def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints_c=False
     
     return filename
 
-def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints_c=False, show_prints_control=True, new_sim=False):
+def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints_c=False, show_prints_control=True, new_sim=False, sim_number=1):
 
     if parameters3D["agg"] == 0:
-        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
     else:
-        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}.txt"
+        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
 
     path = Path(filename)
     if path.exists() and (new_sim == False):
@@ -140,7 +143,8 @@ def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints_c=False
             str(parametersDynamics["max_inh_weight"]),
             str(parametersDynamics["noise_max"]),
             str(parametersDynamics["sim_time"]),
-            str(parametersDynamics["seed"])
+            str(parametersDynamics["seed"]),
+            str(sim_number)
         ], capture_output=True, text=True)
 
         if show_prints_c:
@@ -162,6 +166,7 @@ def load_firings(path):
 def neuron_map_gini2D(filename, parameters2D):
 
     sunset2 = load_cmap('Sunset2', cmap_type='continuous')
+    viridis = load_cmap('Viridis', cmap_type='continuous')
 
     X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(filename)
 
@@ -205,7 +210,7 @@ def neuron_map_gini2D(filename, parameters2D):
     # FIGURA CON DOS SUBPLOTS
     # =========================
 
-    fig, axs = plt.subplots(1, 2, figsize=(12,6))
+    fig, axs = plt.subplots(1, 2, figsize=(12,5))
 
     # -------------------------
     # RED DE NEURONAS
@@ -214,14 +219,14 @@ def neuron_map_gini2D(filename, parameters2D):
     ax = axs[0]
 
 
-    # ax.set_xlabel('X (mm)', fontsize=16, labelpad=10)
-    # ax.set_ylabel('Y (mm)', fontsize=16, labelpad=10)
+    ax.set_xlabel('X (mm)', fontsize=16, labelpad=10)
+    ax.set_ylabel('Y (mm)', fontsize=16, labelpad=10)
 
     ax.set_xlim(-L/2, L/2)
     ax.set_ylim(-L/2, L/2)
 
-    ax.set_xticks([])
-    ax.set_yticks([])
+    # ax.set_xticks([])
+    # ax.set_yticks([])
 
     x_grid = np.linspace(xmin, xmax, n_grid+1)
     y_grid = np.linspace(ymin, ymax, n_grid+1)
@@ -238,20 +243,21 @@ def neuron_map_gini2D(filename, parameters2D):
         origin='lower',
         aspect='equal',
         alpha=0.5,
-        cmap=sunset2
+        cmap='cividis',
     )
 
-    ax.scatter(X, Y, s=7, color='firebrick', zorder=3)
+    ax.scatter(X, Y, s=7, color=viridis(0.05), zorder=3)
+
     ax.tick_params(axis='both', which='major', labelsize = 14)
     ax.tick_params(axis='both', which='minor', labelsize = 0)
 
-    # ax.set_title("Neuron positions")
+    ax.set_title("Neuron positions")
 
     # -------------------------
     # CURVA DE GINI
     # -------------------------
 
-    ax = axs[1]
+    ax= axs[1]
 
     ax.plot(bins, G, color=sunset2(0.1), marker='o', markersize=3, lw=1)
     ax.plot(bins, bins, color='black', lw=2)
@@ -259,18 +265,20 @@ def neuron_map_gini2D(filename, parameters2D):
     ax.legend(fontsize=15, loc='lower right', frameon=False)
     # ax.text(0.75, 0.15, r"$\Lambda = $" + f"{Gini:.3f}", fontsize=30, ha='center', va='center', transform=ax.transAxes)
 
-    # ax.set_ylabel('Occupation', fontsize=16, labelpad=10)
+    ax.set_ylabel('Occupation', fontsize=18, labelpad=10)
 
     ax.tick_params(axis='both', which='major', labelsize = 14)
     ax.set_xticks([])
     ax.set_yticks([])
+    # ax.text(0.58, 0.5, 'Perfect equality', fontsize = 18, color='black', ha='center', va='center', rotation=45, transform=ax.transAxes)
 
-    # ax.set_xlabel('Cumulative proportion of grid cells', fontsize=16, labelpad=10)
+
+    ax.set_xlabel('Cumulative grid cells', fontsize=18, labelpad=10)
 
     # ax.set_title(f"Gini coefficient = {Gini:.3f}", fontsize=16)
 
     plt.tight_layout()
-    plt.savefig("Gini_things/2D_neuron_map_gini.svg", dpi=300, bbox_inches='tight')
+    plt.savefig("plots/2D_neuron_map_gini.svg", dpi=300, bbox_inches='tight')
     plt.show()
 
 def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_control = True, new_sim = False):
@@ -439,7 +447,7 @@ def neuron_map_gini3D(filename, parameters3D):
     xmax = ymax = zmax =  L/2
 
     # ====== HISTOGRAMA 3D ======
-    n_grid = 10
+    n_grid = 20
 
     H, edges = np.histogramdd(
         sample=np.column_stack([X, Y, Z]),
@@ -1124,3 +1132,354 @@ def plot_raster_interleaved_inhibitory(
     firings_i_reordered = old_to_new[firings_i - 1] + 1
 
     return firings_i_reordered, new_order
+
+
+def compile_c_codes():
+    gcc = "C:/msys64/ucrt64/bin/gcc.exe"
+
+    subprocess.run([
+        gcc, "-O3",
+        "2D_create_network.c", "2D_functions.c",
+        "-o", "2D_create_network.exe",
+        "-lm"
+    ], check=True)
+
+    subprocess.run([
+        gcc, "-Wall", "-O3",
+        "2D_tune_positions.c", "2D_functions.c",
+        "-o", "2D_tune_positions.exe",
+        "-lm"
+    ], check=True)
+
+    subprocess.run([
+        gcc, "-O3",
+        "2D_dynamics.c", "2D_functions.c",
+        "-o", "2D_dynamics.exe",
+        "-lm"
+    ], check=True)
+
+from numba import njit
+def degree_distribution(A_binary, normalize=False):
+    degrees = np.sum(A_binary, axis=1).astype(int)
+    k_vals = np.arange(degrees.max() + 1)
+
+    pk = np.array([
+        np.sum(degrees == k) for k in k_vals
+    ], dtype=float)
+
+    if normalize and pk.sum() > 0:
+        pk /= pk.sum()
+
+    return k_vals, pk
+
+
+def binarize_functional_matrix(F, percentile=90):
+    """
+    Binariza una matriz funcional F utilizando un umbral basado en percentiles.
+
+    Procedimiento:
+    1. Se ignora la diagonal (autoconexiones) asignando NaN.
+    2. Se consideran solo los valores de la parte triangular superior
+       (para evitar duplicados en matrices simétricas).
+    3. Se calcula un umbral como el percentil indicado (por defecto, 90).
+       → El percentil p es el valor por debajo del cual se encuentra el p% de los datos.
+    4. Se construye una matriz binaria donde:
+       - 1 si F_ij >= threshold (conexiones más fuertes)
+       - 0 en caso contrario
+    5. Se simetriza la matriz para obtener una red no dirigida.
+    6. Se eliminan autoconexiones (diagonal = 0).
+
+    Interpretación:
+    - Con percentile=90, se conservan aproximadamente el 10% de las conexiones más fuertes.
+    - El umbral es relativo a la distribución de F, por lo que controla la densidad
+      de la red de forma adaptativa.
+
+    Parámetros
+    ----------
+    F : ndarray
+        Matriz funcional (por ejemplo, correlaciones).
+    percentile : float
+        Percentil usado para definir el umbral (0–100).
+
+    Returns
+    -------
+    F_binary : ndarray
+        Matriz binaria (0/1) de conectividad.
+    threshold : float
+        Valor del umbral aplicado.
+    """
+    F_tmp = F.copy()
+    np.fill_diagonal(F_tmp, np.nan)
+
+    iu = np.triu_indices_from(F_tmp, k=1)
+    vals = F_tmp[iu]
+    valid_vals = vals[~np.isnan(vals)]
+    F_binary = np.zeros_like(F, dtype=np.uint8)
+
+
+    # threshold = np.percentile(valid_vals, percentile)
+    # F_binary[iu] = (F[iu] >= threshold).astype(np.uint8)
+
+    threshold = np.percentile(np.abs(valid_vals), percentile)
+    F_binary[iu] = (np.abs(F[iu]) >= threshold).astype(np.uint8)
+
+    F_binary = F_binary + F_binary.T
+    np.fill_diagonal(F_binary, 0)
+
+    return F_binary, threshold
+
+
+def order_F_louvain_from_raster(
+    F,
+    F_binary,
+    firings_i,
+    seed=0
+):
+    rng = np.random.default_rng(seed)
+    N = F.shape[0]
+
+    active = np.unique(firings_i.astype(int) - 1)
+    all_neurons = np.arange(N)
+    inactive = np.setdiff1d(all_neurons, active)
+
+    print(f"Neuronas activas: {len(active)}")
+    print(f"Neuronas inactivas: {len(inactive)}")
+
+    W_active = F_binary[np.ix_(active, active)].copy()
+    np.fill_diagonal(W_active, 0)
+
+    G = nx.from_numpy_array(W_active)
+
+    communities = nx.community.louvain_communities(
+        G,
+        weight="weight",
+        resolution=1.0,
+        seed=seed
+    )
+
+    communities = sorted(communities, key=len, reverse=True)
+
+    degree = np.sum(W_active, axis=1)
+
+    order_active_local = []
+
+    for comm in communities:
+        comm = list(comm)
+
+        comm_sorted = sorted(
+            comm,
+            key=lambda i: degree[i],
+            reverse=True
+        )
+
+        order_active_local.extend(comm_sorted)
+
+    order_active_local = np.array(order_active_local)
+    order_active = active[order_active_local]
+
+    final_order = np.empty(N, dtype=int)
+
+    inactive_positions = rng.choice(
+        N,
+        size=len(inactive),
+        replace=False
+    )
+
+    mask_inactive = np.zeros(N, dtype=bool)
+    mask_inactive[inactive_positions] = True
+
+    final_order[mask_inactive] = rng.permutation(inactive)
+    final_order[~mask_inactive] = order_active
+
+    F_ordered = F[np.ix_(final_order, final_order)]
+    np.fill_diagonal(F_ordered, 0)
+
+    return F_ordered, final_order, communities
+
+
+@njit
+def rewire_directed_fast_inplace(A, n_rewires):
+    N = A.shape[0]
+
+    for _ in range(n_rewires):
+
+        while True:
+            i = np.random.randint(0, N)
+            j = np.random.randint(0, N)
+
+            if i != j and A[i, j] == 1:
+                break
+
+        while True:
+            u = np.random.randint(0, N)
+            v = np.random.randint(0, N)
+
+            if u != v and A[u, v] == 0:
+                break
+
+        A[i, j] = 0
+        A[u, v] = 1
+
+
+def plot_full_panel(
+    F_ordered,
+    A_ordered,
+    firings_t,
+    firings_i_louvain,
+    GNA,
+    k_vals_A,
+    pk_A,
+    k_vals,
+    pk,
+    k_vals_rw,
+    pk_rw,
+    SIM_TIME,
+    base_sigma,
+    MAX_EXC_WEIGHT,
+    savepath=None
+):
+    fig = plt.figure(figsize=(14, 6))
+
+    gs = fig.add_gridspec(
+        2, 3,
+        width_ratios=[1, 1, 2.8],
+        height_ratios=[1, 1],
+        wspace=0.28,
+        hspace=0.28
+    )
+
+    # ========================================================
+    # A) Functional matrix - arriba izquierda
+    # ========================================================
+
+    axA = fig.add_subplot(gs[0, 0])
+
+    axA.imshow(
+        F_ordered,
+        aspect="equal",
+        interpolation="nearest",
+        cmap="binary",
+        vmin=0,
+        vmax=1
+    )
+
+    axA.set_ylim(F_ordered.shape[0], 0)
+    axA.set_title("A) Functional", fontsize=14)
+    axA.set_xticks([0, 1000, 2000])
+    axA.set_xticklabels(["0", "1k", "2k"])
+    axA.set_yticks([0, 1000, 2000])
+    axA.set_yticklabels(["0", "1k", "2k"])
+    axA.tick_params(labelsize=10)
+
+    # ========================================================
+    # B) Structural matrix - abajo izquierda
+    # ========================================================
+
+    axB = fig.add_subplot(gs[1, 0])
+
+    axB.imshow(
+        A_ordered,
+        aspect="equal",
+        interpolation="nearest",
+        cmap="binary",
+        vmin=0,
+        vmax=1
+    )
+
+    axB.set_ylim(A_ordered.shape[0], 0)
+    axB.set_title("B) Structural", fontsize=14)
+    axB.set_xticks([0, 1000, 2000])
+    axB.set_xticklabels(["0", "1k", "2k"])
+    axB.set_yticks([0, 1000, 2000])
+    axB.set_yticklabels(["0", "1k", "2k"])
+    axB.tick_params(labelsize=10)
+
+    # ========================================================
+    # C) Raster - arriba centro
+    # ========================================================
+
+    axC = fig.add_subplot(gs[0, 1])
+
+    axC.scatter(
+        firings_t / 1000,
+        firings_i_louvain,
+        s=0.2,
+        color=sunset2(0.1)
+    )
+
+
+    axC.set_title("C) Raster", fontsize=14)
+    axC.set_ylabel("Neuron", fontsize=12)
+    axC.set_xlim(0, 2)
+    axC.set_yticks([0, 1000, 2000])
+    axC.set_yticklabels(["0", "1k", "2k"])
+    axC.tick_params(labelsize=10)
+
+    # ========================================================
+    # D) GNA - abajo centro
+    # ========================================================
+
+    axD = fig.add_subplot(gs[1, 1])
+
+    axD.plot(
+        np.arange(1, SIM_TIME + 1) / 1000,
+        GNA,
+        lw=1.5,
+        color=sunset2(0.1)
+    )
+
+    axD.set_title("D) GNA", fontsize=14)
+    axD.set_xlabel("Time (s)", fontsize=12)
+    axD.set_ylabel("GNA", fontsize=12)
+    axD.set_xlim(0, 2)
+    axD.set_ylim(0, 0.78)
+    axD.tick_params(labelsize=10)
+
+    # ========================================================
+    # E) Degree distribution - derecha grande
+    # ========================================================
+
+    axE = fig.add_subplot(gs[:, 2])
+
+    axE.plot(
+        k_vals,
+        pk,
+        lw=2,
+        color=sunset2(0.1),
+        label="Functional"
+    )
+
+    axE.plot(
+        k_vals_rw,
+        pk_rw,
+        lw=2,
+        color=sunset2(0.5),
+        label="Rewired"
+    )
+
+    axE.plot(
+        k_vals_A,
+        pk_A,
+        lw=2,
+        color=sunset2(0.9),
+        label="Structural"
+    )
+
+    axE.set_title("E) Degree distribution", fontsize=14)
+    axE.set_xlabel("Degree (k)", fontsize=12)
+    axE.set_ylabel("P(k)", fontsize=12)
+    axE.legend(frameon=False, fontsize=10)
+    axE.tick_params(labelsize=10)
+    axE.set_xlim(0, 400)
+    fig.suptitle(
+        rf"$\sigma={base_sigma:.2f}$, $E_{{exc}}={MAX_EXC_WEIGHT:.2f}$",
+        fontsize=16,
+        y=0.98
+    )
+
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+
+    if savepath is not None:
+        plt.savefig(savepath, dpi=300, bbox_inches="tight")
+
+    plt.show()

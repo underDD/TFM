@@ -565,6 +565,8 @@ int make_output_filename(
         sim_number
     );
 
+    // printf("Output filename: %s\n", out_filename);
+
     if (written < 0 || written >= out_size) {
         fprintf(stderr, "Output filename too long.\n");
         return -1;

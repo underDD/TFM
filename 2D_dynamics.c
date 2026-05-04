@@ -4,6 +4,7 @@ int main(int argc, char *argv[]) {
 
     ini_ran(time(NULL));
     
+    fprintf(stderr, "Memory allocation error for adjacency matrix.\n");
     if (argc < 8) {
         fprintf(stderr,
             "Usage:\n"
@@ -31,20 +32,25 @@ int main(int argc, char *argv[]) {
 
     uint8_t *A = (uint8_t *)malloc(N * N * sizeof(uint8_t));
     if (!A) {
-        fprintf(stderr, "Memory allocation error for adjacency matrix.\n");
         return 1;
     }
+
+    printf("Error en get_matrix_size: %d\n", N);
 
     if (load_adjacency_matrix(adj_filename, A, N) != 0) {
         free(A);
         return 1;
     }
 
+    printf("Error en load_adjacency_matrix: %d\n");
+
     char output_filename[1024];
     if (make_output_filename(adj_filename, max_exc_weight, output_filename, sizeof(output_filename), sim_number) != 0) {
         free(A);
         return 1;
     }
+
+    printf("Error en make_output_filename: %d\n");
 
     if (simulate_izhikevich(
             A,
@@ -58,6 +64,8 @@ int main(int argc, char *argv[]) {
         free(A);
         return 1;
     }
+
+    printf("Error en simulate_izhikevich: %d\n");
 
     free(A);
     return 0;

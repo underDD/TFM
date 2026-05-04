@@ -40,6 +40,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // printf("Adjacency matrix loaded successfully. Size: %d x %d\n", N, N);
+
     char output_filename[MAX_STRING_LENGTH];
     if (make_output_filename(adj_filename, max_exc_weight, output_filename, sizeof(output_filename), sim_number) != 0) {
         free(A);
