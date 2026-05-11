@@ -5,10 +5,10 @@ int main(int argc, char *argv[]) {
     ini_ran(time(NULL));
     
     fprintf(stderr, "Memory allocation error for adjacency matrix.\n");
-    if (argc < 8) {
+    if (argc < 9) {
         fprintf(stderr,
             "Usage:\n"
-            "%s adjacency_file max_exc_weight max_inh_weight noise_max sim_time seed\n",
+            "%s adjacency_file max_exc_weight max_inh_weight noise_max sim_time seed geometry\n",
             argv[0]
         );
         return 1;
@@ -22,6 +22,8 @@ int main(int argc, char *argv[]) {
     unsigned int seed = (unsigned int)atoi(argv[6]);
     int sim_number = atoi(argv[7]);
 
+    char geometry[MAX_STRING_LENGTH];
+    strcpy(geometry, argv[8]);
     // srand(seed);
 
     int N = get_matrix_size(adj_filename);

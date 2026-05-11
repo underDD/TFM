@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     int n_centers;
     double base_sigma;
     double alpha;
+    double R;
 
     double *somas;
     double *dendrites_diameters;
@@ -27,6 +28,7 @@ int main(int argc, char *argv[]) {
     char filename[MAX_STRING_LENGTH];
     char filename_simulation[MAX_STRING_LENGTH];
     char BC_type[MAX_STRING_LENGTH];
+    char geometry[MAX_STRING_LENGTH];
 
     // strcpy(BC_type, "PBC"); // Boundary conditions type (PBC: Periodic Boundary Conditions, RBC: Reflective Boundary Conditions)
 
@@ -58,8 +60,15 @@ int main(int argc, char *argv[]) {
     fscanf(neurons_params, "nc = %d\n", &n_centers);
     fscanf(neurons_params, "base_sigma = %lf\n", &base_sigma);
     fscanf(neurons_params, "BC_type = %s\n", BC_type);
+    fscanf(neurons_params, "Geometry = %s\n", geometry);
 
-    N_neurons = (int)(rho * L * L);
+    if (strcmp(geometry, "square") == 0){
+        N_neurons = (int)(rho * L * L);
+    }
+    else if (strcmp(geometry, "circle") == 0){
+        R = L / 2.0; // Calculate the radius of the circle to maintain the same area as the square
+        N_neurons = (int)(rho * PI * R * R);
+    }
 
     printf("Parameters loaded from file: %s\n", filename);
     printf("L = %.1lf\n", L);
@@ -74,6 +83,8 @@ int main(int argc, char *argv[]) {
     printf("sigma_axon_angle = %.3lf\n", sigma_axon_angle);
     printf("nc = %d\n", n_centers);
     printf("base_sigma = %.3lf\n", base_sigma);
+    printf("BC_type = %s\n", BC_type);
+    printf("Geometry = %s\n", geometry);
 
     fgets(filename, MAX_STRING_LENGTH, neurons_params); // Read the header line
     printf("Heades line skipped: %s\n", filename);
@@ -97,10 +108,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
     if (n_centers == 0){
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, L, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -120,10 +131,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, L, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename, "2D_created_networks/2D_adjacency_matrix_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK 
@@ -143,10 +154,14 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
         double initial_segment_vector_x, initial_segment_vector_y;
         double initial_angle = randomInPR(0.0, 2*PI); // Initial angle of the axon (randomly distributed between 0 and 2*pi)
-
-        double xmin = -L/2.0, xmax = L/2.0;
-        double ymin = -L/2.0, ymax = L/2.0;
-
+        double xmin, xmax, ymin, ymax;
+        if (strcmp(geometry, "square") == 0){
+            xmin = -L/2.0;
+            xmax = L/2.0;
+            ymin = -L/2.0;
+            ymax = L/2.0;
+        }
+        
         initial_segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle);
         initial_segment_vector_y = Y[i] + (soma_diameter/2.0) * sin(initial_angle);
         
@@ -154,11 +169,18 @@ int main(int argc, char *argv[]) {
             PBC(&initial_segment_vector_x, L);
             PBC(&initial_segment_vector_y, L);
         }
-        else{
+        else if (strcmp(BC_type, "SW") == 0 && strcmp(geometry, "square") == 0){
             if (initial_segment_vector_x < xmin) initial_segment_vector_x = xmin;
             if (initial_segment_vector_x > xmax) initial_segment_vector_x = xmax;
             if (initial_segment_vector_y < ymin) initial_segment_vector_y = ymin;
             if (initial_segment_vector_y > ymax) initial_segment_vector_y = ymax;
+        }
+        else if (strcmp(geometry, "circle") == 0){
+            double r = sqrt(initial_segment_vector_x*initial_segment_vector_x + initial_segment_vector_y*initial_segment_vector_y);
+            if (r > R){
+                initial_segment_vector_x = (initial_segment_vector_x / r) * R;
+                initial_segment_vector_y = (initial_segment_vector_y / r) * R;
+            }
         }
 
         int number_of_segments = (int)(axon_lengths[i] / segment_length);
@@ -198,13 +220,22 @@ int main(int argc, char *argv[]) {
                 PBC(&end_segment_vector_x, L);
                 PBC(&end_segment_vector_y, L);
             }
-            else{
+            else if (strcmp(BC_type, "SW") == 0 && strcmp(geometry, "square") == 0){
                 sticky_walls2D(initial_segment_vector_x, initial_segment_vector_y, &dx, &dy,
                              L, &end_segment_vector_x, &end_segment_vector_y, X, Y,
                              dendrites_diameters, i, N_neurons, AdjMatrix_flat,
                              &trials, &links, axon_simulation, i, k);
                 
                 // To keep the angular persistence even after hitting the wall, we update the initial angle based on the new segment vector after sticky walls
+                if (dx*dx + dy*dy > 1e-15){
+                    initial_angle = atan2(dy, dx);
+                }
+            }
+            else if (strcmp(BC_type, "SW") == 0 && strcmp(geometry, "circle") == 0){
+                sticky_circle2D(initial_segment_vector_x, initial_segment_vector_y, &dx, &dy,
+                             R, &end_segment_vector_x, &end_segment_vector_y, X, Y,
+                             dendrites_diameters, i, N_neurons, AdjMatrix_flat,
+                             &trials, &links, axon_simulation, i, k);
                 if (dx*dx + dy*dy > 1e-15){
                     initial_angle = atan2(dy, dx);
                 }

@@ -92,4 +92,15 @@ int simulate_izhikevich(
     double noise_max,
     const char *output_filename
 );
+void sticky_circle2D(double initial_segment_vector_x, double initial_segment_vector_y,
+                     double *dx, double *dy,
+                     double R,
+                     double *end_segment_vector_x, double *end_segment_vector_y,
+                     double *X, double *Y,
+                     double *dendrites_diameters,
+                     int i, int N_neurons,
+                     uint8_t *AdjMatrix_flat,
+                     int *trials, int *links,
+                     FILE *axon_simulation,
+                     int neuron_idx, int segment_idx);
 //************************************

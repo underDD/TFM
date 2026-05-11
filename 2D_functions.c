@@ -320,12 +320,12 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
         for (int j = 0; j < N_neurons; j++){
             // Check intersection with dendrite j
             if (j==i) continue;
-            if (AdjMatrix_flat[i*N_neurons + j]!= 0) continue;
+            // if (AdjMatrix_flat[i*N_neurons + j]!= 0) continue;
 
-            if(new_axon_intersection_noPBC2D(X[i], Y[i], dendrites_diameters[j], x, y, seg_dx, seg_dy)){
+            if(new_axon_intersection_noPBC2D(X[j], Y[j], dendrites_diameters[j], x, y, seg_dx, seg_dy)){
                 (*trials)++;
             
-                    AdjMatrix_flat[i*N_neurons + j] = 1;
+                    AdjMatrix_flat[i*N_neurons + j] += 1; // Create connection
                     (*links)++;
             }
         }
@@ -477,6 +477,7 @@ void build_weight_matrix(
 
 #include <stdio.h>
 #include <string.h>
+
 
 int make_output_filename(
     const char *adj_filename,
@@ -655,4 +656,349 @@ int simulate_izhikevich(
 
     free(a); free(b); free(c); free(d); free(v); free(u); free(I); free(S); free(fired);
     return 0;
+}
+
+
+/*
+    Simulate the growth of an axon segment with "sticky circular wall" boundary conditions.
+
+    The axon grows in a straight line until it hits the circular boundary.
+    Upon hitting the boundary, it sticks to the circumference and continues growing
+    tangentially along the circular wall.
+
+    Since dendrite intersections are computed with straight segments, the circular
+    motion along the wall is approximated by small straight subsegments.
+
+    @param initial_segment_vector_x, initial_segment_vector_y: starting point of the axon segment
+    @param dx, dy: initial growth vector of the axon segment. It will be modified to reflect the final effective growth direction.
+    @param R: radius of the circular domain
+    @param end_segment_vector_x, end_segment_vector_y: output final position of the axon segment
+    @param X, Y: arrays of neuron positions
+    @param dendrites_diameters: array of dendrite diameters
+    @param i: index of the current neuron
+    @param N_neurons: total number of neurons
+    @param AdjMatrix_flat: flattened adjacency matrix
+    @param trials: pointer to number of intersections
+    @param links: pointer to number of created links
+    @param axon_simulation: file where axon subsegments are written
+    @param neuron_idx: neuron index for output
+    @param segment_idx: axon segment index for output
+*/
+void sticky_circle2D(double initial_segment_vector_x, double initial_segment_vector_y,
+                     double *dx, double *dy,
+                     double R,
+                     double *end_segment_vector_x, double *end_segment_vector_y,
+                     double *X, double *Y,
+                     double *dendrites_diameters,
+                     int i, int N_neurons,
+                     uint8_t *AdjMatrix_flat,
+                     int *trials, int *links,
+                     FILE *axon_simulation,
+                     int neuron_idx, int segment_idx)
+{
+    double eps = 1e-12;
+
+    double x = initial_segment_vector_x;
+    double y = initial_segment_vector_y;
+
+    double total_len = sqrt((*dx) * (*dx) + (*dy) * (*dy));
+
+    if (total_len < eps) {
+        *end_segment_vector_x = x;
+        *end_segment_vector_y = y;
+        *dx = 0.0;
+        *dy = 0.0;
+        return;
+    }
+
+    double ux = (*dx) / total_len;
+    double uy = (*dy) / total_len;
+
+    double remaining = total_len;
+    int subsegment_idx = 0;
+
+    /*
+        Safety correction: if numerical error places the starting point
+        slightly outside the circle, project it back onto the boundary.
+    */
+    double r0 = sqrt(x*x + y*y);
+    if (r0 > R) {
+        x = (x / r0) * R;
+        y = (y / r0) * R;
+    }
+
+    while (remaining > eps) {
+
+        double x_proposed = x + remaining * ux;
+        double y_proposed = y + remaining * uy;
+
+        double step_len;
+        double x_next, y_next;
+        int hit_wall = 0;
+
+        /*
+            Case 1: the remaining straight segment stays inside the circle.
+        */
+        if (x_proposed*x_proposed + y_proposed*y_proposed <= R*R + eps) {
+
+            step_len = remaining;
+            x_next = x_proposed;
+            y_next = y_proposed;
+            hit_wall = 0;
+        }
+
+        /*
+            Case 2: the segment crosses the circular boundary.
+            Solve |(x,y) + s*(ux,uy)|^2 = R^2.
+            Since (ux,uy) is normalized, the quadratic is:
+                s^2 + 2*(x*ux + y*uy)*s + (x^2 + y^2 - R^2) = 0
+        */
+        else {
+
+            double b = 2.0 * (x*ux + y*uy);
+            double c = x*x + y*y - R*R;
+            double discriminant = b*b - 4.0*c;
+
+            if (discriminant < 0.0) {
+                /*
+                    Numerical fallback: stay where we are.
+                */
+                break;
+            }
+
+            double sqrt_disc = sqrt(discriminant);
+
+            double s1 = (-b - sqrt_disc) / 2.0;
+            double s2 = (-b + sqrt_disc) / 2.0;
+
+            /*
+                We need the positive root in the current direction.
+            */
+            double s_hit = DBL_MAX;
+
+            if (s1 > eps && s1 < s_hit) s_hit = s1;
+            if (s2 > eps && s2 < s_hit) s_hit = s2;
+
+            /*
+                If we are already exactly on the wall and trying to go outward,
+                there may be no positive useful crossing distance.
+                In that case, directly switch to tangential motion.
+            */
+            if (s_hit == DBL_MAX || s_hit > remaining) {
+                s_hit = 0.0;
+            }
+
+            step_len = s_hit;
+            x_next = x + step_len * ux;
+            y_next = y + step_len * uy;
+
+            /*
+                Snap exactly to the circle to avoid numerical drift.
+            */
+            double r_next = sqrt(x_next*x_next + y_next*y_next);
+            if (r_next > eps) {
+                x_next = (x_next / r_next) * R;
+                y_next = (y_next / r_next) * R;
+            }
+
+            hit_wall = 1;
+        }
+
+        /*
+            Check intersections along the straight subsegment x,y -> x_next,y_next.
+        */
+        double seg_dx = x_next - x;
+        double seg_dy = y_next - y;
+
+        if (seg_dx*seg_dx + seg_dy*seg_dy > eps*eps) {
+
+            for (int j = 0; j < N_neurons; j++) {
+
+                if (j == i) continue;
+
+                if (new_axon_intersection_noPBC2D(
+                        X[j], Y[j],
+                        dendrites_diameters[j],
+                        x, y,
+                        seg_dx, seg_dy
+                    )) {
+
+                    (*trials)++;
+                    AdjMatrix_flat[i*N_neurons + j] += 1;
+                    (*links)++;
+                }
+            }
+
+            if (axon_simulation != NULL) {
+                fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
+                        neuron_idx, segment_idx, subsegment_idx,
+                        x, y,
+                        x_next, y_next);
+            }
+
+            subsegment_idx++;
+        }
+
+        remaining -= step_len;
+
+        x = x_next;
+        y = y_next;
+
+        /*
+            If the segment hit the circular wall, redirect the remaining growth
+            tangentially along the circumference.
+        */
+        if (remaining > eps && hit_wall) {
+
+            double r = sqrt(x*x + y*y);
+
+            if (r < eps) {
+                break;
+            }
+
+            /*
+                Outward normal of the circle.
+            */
+            double nx = x / r;
+            double ny = y / r;
+
+            /*
+                One possible tangent direction.
+            */
+            double tx = -ny;
+            double ty = nx;
+
+            /*
+                Choose the tangent orientation closest to the previous direction.
+            */
+            double dot = tx*ux + ty*uy;
+
+            if (dot < 0.0) {
+                tx = -tx;
+                ty = -ty;
+            }
+
+            ux = tx;
+            uy = ty;
+
+            /*
+                Move a tiny bit inward/tangentially stable? No:
+                keep exactly on the boundary and continue with arc approximation.
+            */
+        }
+
+        /*
+            If we are already moving along the wall, a straight tangential step
+            would leave the circle slightly. Therefore, for wall motion, we
+            explicitly advance along the circular arc.
+        */
+        if (remaining > eps) {
+
+            double r = sqrt(x*x + y*y);
+
+            if (fabs(r - R) < 1e-8) {
+
+                /*
+                    We are on the circular wall. Advance along the circumference.
+                    Use the sign of the current tangent direction to decide whether
+                    theta increases or decreases.
+                */
+                double theta = atan2(y, x);
+
+                /*
+                    Positive tangent for increasing theta is (-sin theta, cos theta).
+                */
+                double tx_pos = -sin(theta);
+                double ty_pos =  cos(theta);
+
+                double sign = 1.0;
+                if (tx_pos*ux + ty_pos*uy < 0.0) {
+                    sign = -1.0;
+                }
+
+                double arc_len = remaining;
+                double dtheta = sign * arc_len / R;
+
+                double theta_next = theta + dtheta;
+
+                double x_arc = R * cos(theta_next);
+                double y_arc = R * sin(theta_next);
+
+                double arc_dx = x_arc - x;
+                double arc_dy = y_arc - y;
+
+                /*
+                    Check intersections along the chord approximating the arc.
+                    For small segment_length this is accurate enough.
+                */
+                if (arc_dx*arc_dx + arc_dy*arc_dy > eps*eps) {
+
+                    for (int j = 0; j < N_neurons; j++) {
+
+                        if (j == i) continue;
+
+                        if (new_axon_intersection_noPBC2D(
+                                X[j], Y[j],
+                                dendrites_diameters[j],
+                                x, y,
+                                arc_dx, arc_dy
+                            )) {
+
+                            (*trials)++;
+                            AdjMatrix_flat[i*N_neurons + j] += 1;
+                            (*links)++;
+                        }
+                    }
+
+                    if (axon_simulation != NULL) {
+                        fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
+                                neuron_idx, segment_idx, subsegment_idx,
+                                x, y,
+                                x_arc, y_arc);
+                    }
+
+                    subsegment_idx++;
+                }
+
+                x = x_arc;
+                y = y_arc;
+
+                /*
+                    Final tangent direction at the new point.
+                */
+                double theta_final = atan2(y, x);
+                double tx_final = -sin(theta_final);
+                double ty_final =  cos(theta_final);
+
+                if (sign < 0.0) {
+                    tx_final = -tx_final;
+                    ty_final = -ty_final;
+                }
+
+                ux = tx_final;
+                uy = ty_final;
+
+                remaining = 0.0;
+            }
+        }
+    }
+
+    /*
+        Final safety projection to the circle if numerical error sends the point outside.
+    */
+    double r_final = sqrt(x*x + y*y);
+    if (r_final > R) {
+        x = (x / r_final) * R;
+        y = (y / r_final) * R;
+    }
+
+    *end_segment_vector_x = x;
+    *end_segment_vector_y = y;
+
+    /*
+        Return the final effective direction so the main loop can update
+        initial_angle = atan2(*dy, *dx).
+    */
+    *dx = ux * total_len;
+    *dy = uy * total_len;
 }

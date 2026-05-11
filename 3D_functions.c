@@ -349,7 +349,7 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
         // Comprobar intersecciones sobre este subsegmento
         for (int j = 0; j < N_neurons; j++){
             if (j == i) continue;
-            if (AdjMatrix_flat[i*N_neurons + j] != 0) continue;
+            // if (AdjMatrix_flat[i*N_neurons + j] != 0) continue;
 
             if (new_axon_intersection_noPBC_3D(
                     X[j], Y[j], Z[j], dendrites_diameters[j],
@@ -358,7 +358,7 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
             {
                 (*trials)++;
                 
-                    AdjMatrix_flat[i*N_neurons + j] = 1;
+                    AdjMatrix_flat[i*N_neurons + j] += 1;
                     (*links)++;
                 
             }
