@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
     double d_mean, d_sigma;
     double l_mean, l_sigma, sigma_rayleigh;
     double segment_length, sigma_pol, sigma_azi;
+    double R, height;
 
     double *somas;
     double *dendrites_diameters;
@@ -18,6 +19,7 @@ int main(int argc, char *argv[]) {
 
     char filename[MAX_STRING_LENGTH];
     char BC_type[MAX_STRING_LENGTH];
+    char geometry[MAX_STRING_LENGTH];
 
     int agg; // 0 no aggragation, 1 aggregation
     int n_centers;
@@ -42,6 +44,15 @@ int main(int argc, char *argv[]) {
     n_centers = atoi(argv[11]);
     base_sigma = atof(argv[12]);
     strcpy(BC_type, argv[13]);
+    strcpy(geometry, argv[14]);
+
+    if (strcmp(geometry, "square") == 0){
+        N = (int)(rho * L * L * L);
+    }
+    else if (strcmp(geometry, "circle") == 0){
+        R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
+        N = (int)(rho * PI * R * R);
+    }
 
     N = (int)(rho * L * L * L);
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
@@ -62,7 +73,7 @@ int main(int argc, char *argv[]) {
     if (agg == 0){
         
         FILE *neurons_params;
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_%s_random_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", BC_type, L, rho, l_mean, d_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_%s_%s_random_L%.1lf_rho%.0f_d%.2f.txt", geometry, BC_type, L, rho, d_mean);
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);
             exit(1);
@@ -82,31 +93,27 @@ int main(int argc, char *argv[]) {
         printf("sigma_pol = %.3lf\n", sigma_pol);
         printf("sigma_azi = %.3lf\n", sigma_azi);
 
-        fprintf(neurons_params, "L = %.1lf\n", L);
-        fprintf(neurons_params, "rho = %.0f\n", rho);
-        fprintf(neurons_params, "soma_diameter = %.3lf\n", soma_diameter);
-        fprintf(neurons_params, "d_mean = %.3lf\n", d_mean);
-        fprintf(neurons_params, "d_sigma = %.3lf\n", d_sigma);
-        fprintf(neurons_params, "l_mean = %.3lf\n", l_mean);
-        fprintf(neurons_params, "l_sigma = %.3lf\n", l_sigma);
-        fprintf(neurons_params, "sigma_rayleigh = %.3lf\n", sigma_rayleigh);
-        fprintf(neurons_params, "segment_length = %.3lf\n", segment_length);
-        fprintf(neurons_params, "sigma_pol = %.3lf\n", sigma_pol);
-        fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
-        fprintf(neurons_params, "nc = %d\n", 0);
-        fprintf(neurons_params, "base_sigma = %.4lf\n", 0.0);
-        fprintf(neurons_params, "BC_type = %s\n", BC_type);
-
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
+        double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
         bool overlap;
         for(int i = 0; i < N; i++){
             do{
-
-                X[i] = randomInPR(-L/2.0, L/2.0);
-                Y[i] = randomInPR(-L/2.0, L/2.0);
-                Z[i] = randomInPR(-L/2.0, L/2.0);
+                if (strcmp(geometry, "cube") == 0){
+                    X[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                    Y[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                    Z[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                }
+                else if (strcmp(geometry, "cilinder") == 0){
+                    double R_eff = R - margin; // Effective radius to ensure centers are not too close to the border
+                    double radius = R_eff * sqrt(randomInPR(0.0, 1.0)); 
+                    double angle = randomInPR(0.0, 2*PI); // Random
+                    X[i] = radius * cos(angle);
+                    Y[i] = radius * sin(angle);
+                    Z[i] = randomInPR(-height/2.0 + margin, height/2.0 - margin);
+                }
                 
+
                 overlap = false;
                 double dx = 0, dy = 0, dz = 0;
                 for(int j = 0; j < i; j++){
@@ -156,7 +163,7 @@ int main(int argc, char *argv[]) {
         // base_sigma = 0.1; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
 
-        sprintf(filename, "3D_initial_configurations/3D_neurons_params_%s_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename, "3D_initial_configurations/3D_neurons_params_%s_%s_agg_nc%d_s%.4lf_L%.1lf_rho%.0f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, d_mean);
         FILE *neurons_params;
 
         if ((neurons_params = fopen(filename, "w")) == NULL) {
@@ -181,21 +188,6 @@ int main(int argc, char *argv[]) {
         printf("base_sigma = %.4lf\n", base_sigma);
         printf("Output file: %s", filename);
 
-        fprintf(neurons_params, "L = %.1lf\n", L);
-        fprintf(neurons_params, "rho = %.0f\n", rho);
-        fprintf(neurons_params, "soma_diameter = %.3lf\n", soma_diameter);
-        fprintf(neurons_params, "d_mean = %.3lf\n", d_mean);
-        fprintf(neurons_params, "d_sigma = %.3lf\n", d_sigma);
-        fprintf(neurons_params, "l_mean = %.3lf\n", l_mean);
-        fprintf(neurons_params, "l_sigma = %.3lf\n", l_sigma);
-        fprintf(neurons_params, "sigma_rayleigh = %.3lf\n", sigma_rayleigh);
-        fprintf(neurons_params, "segment_length = %.3lf\n", segment_length);
-        fprintf(neurons_params, "sigma_pol = %.3lf\n", sigma_pol);
-        fprintf(neurons_params, "sigma_azi = %.3lf\n", sigma_azi);
-        fprintf(neurons_params, "nc = %d\n", n_centers);
-        fprintf(neurons_params, "base_sigma = %.4lf\n", base_sigma);
-        fprintf(neurons_params, "BC_type = %s\n", BC_type);
-
         fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
 
         int idx = 0;
@@ -214,10 +206,25 @@ int main(int argc, char *argv[]) {
                 mean_z = randomInPR(-L/2.0, L/2.0);
             }
             else{
-                double margin = 2.0 * sigma_x;
-                mean_x = randomInPR(-L/2.0 + margin, L/2.0 - margin);
-                mean_y = randomInPR(-L/2.0 + margin, L/2.0 - margin);
-                mean_z = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+
+                if (strcmp(geometry, "cube") == 0){
+
+                    double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
+                    mean_x = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                    mean_y = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                    mean_z = randomInPR(-L/2.0 + margin, L/2.0 - margin);
+                }
+
+                else if (strcmp(geometry, "cilinder") == 0){
+                    double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
+                    double R_eff = R - margin; // Effective radius to ensure centers are not too close to the border
+                    double radius = R_eff * sqrt(randomInPR(0.0, 1.0)); 
+                    double angle = randomInPR(0.0, 2*PI); // Random
+                    mean_x = radius * cos(angle);
+                    mean_y = radius * sin(angle);
+                    mean_z = randomInPR(-height/2.0 + margin, height/2.0 - margin);
+                }
+                
             }
 
             for(int n = 0; n < n_this_center; n++){
@@ -233,13 +240,30 @@ int main(int argc, char *argv[]) {
                         PBC(&Z[idx], L);
                     }
                     else{
-                        do {
-                            X[idx] = mean_x + sigma_x * box_muller();
-                            Y[idx] = mean_y + sigma_y * box_muller();
-                            Z[idx] = mean_z + sigma_z * box_muller();
-                        } while (X[idx] < -L/2.0 || X[idx] > L/2.0 ||
-                                 Y[idx] < -L/2.0 || Y[idx] > L/2.0 ||
-                                 Z[idx] < -L/2.0 || Z[idx] > L/2.0);
+
+                        if (strcmp(geometry, "cube") == 0){
+                            double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
+                            do{
+                                X[idx] = mean_x + sigma_x * box_muller();
+                                Y[idx] = mean_y + sigma_y * box_muller();
+                                Z[idx] = mean_z + sigma_z * box_muller();
+                            }while(X[idx] < -L/2.0 + margin || X[idx] > L/2.0 - margin ||
+                                   Y[idx] < -L/2.0 + margin || Y[idx] > L/2.0 - margin ||
+                                   Z[idx] < -L/2.0 + margin || Z[idx] > L/2.0 - margin);
+                        }
+                        else if (strcmp(geometry, "cilinder") == 0){
+                            double margin = soma_diameter / 2.0;
+                            double R_eff = R - margin;
+                            double radius;
+                            double angle;
+                            do{
+                                X[idx] = mean_x + sigma_x * box_muller();
+                                Y[idx] = mean_y + sigma_y * box_muller();
+                                Z[idx] = mean_z + sigma_z * box_muller();
+                                radius = sqrt(X[idx]*X[idx] + Y[idx]*Y[idx]);
+                            }while(radius > R_eff || Z[idx] < -height/2.0 + margin || Z[idx] > height/2.0 - margin);
+                        }
+                        
                     }
 
                     overlap = false;

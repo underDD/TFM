@@ -35,32 +35,28 @@ int main(int argc, char *argv[]) {
     FILE *axon_simulation;
     FILE *neurons_params;
     
-// !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
+// !! FILENAME TO LOAD NEURON CONFIGURATION
 
-    // sprintf(filename, "2D_initial_configurations/2D_neurons_params_agg_nc10_s0.05_L3.0_rho250_l0.50.txt");
     strcpy(filename, argv[1]);
-
+    L = atof(argv[2]); // Could be the length of the square or the diameter of the circle
+    rho = atof(argv[3]);
+    soma_diameter = atof(argv[4]);
+    d_mean = atof(argv[5]);
+    d_sigma = atof(argv[6]);
+    l_mean = atof(argv[7]);
+    segment_length = atof(argv[8]);
+    sigma_axon_angle = atof(argv[9]);
+    n_centers = atoi(argv[10]);
+    base_sigma = atof(argv[11]);
+    strcpy(BC_type, argv[12]);
+    strcpy(geometry, argv[13]);
+    
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
     if ((neurons_params = fopen(filename, "r")) == NULL) {
         printf("Error opening file %s\n", filename);
         exit(1);
     }
-
-    fscanf(neurons_params, "L = %lf\n", &L);
-    fscanf(neurons_params, "rho = %lf\n", &rho);
-    fscanf(neurons_params, "soma_diameter = %lf\n", &soma_diameter);
-    fscanf(neurons_params, "d_mean = %lf\n", &d_mean);
-    fscanf(neurons_params, "d_sigma = %lf\n", &d_sigma);
-    fscanf(neurons_params, "l_mean = %lf\n", &l_mean);
-    fscanf(neurons_params, "l_sigma = %lf\n", &l_sigma);
-    fscanf(neurons_params, "sigma_rayleigh = %lf\n", &sigma_rayleigh);
-    fscanf(neurons_params, "segment_length = %lf\n", &segment_length);
-    fscanf(neurons_params, "sigma_axon_angle = %lf\n", &sigma_axon_angle);
-    fscanf(neurons_params, "nc = %d\n", &n_centers);
-    fscanf(neurons_params, "base_sigma = %lf\n", &base_sigma);
-    fscanf(neurons_params, "BC_type = %s\n", BC_type);
-    fscanf(neurons_params, "Geometry = %s\n", geometry);
 
     if (strcmp(geometry, "square") == 0){
         N_neurons = (int)(rho * L * L);
@@ -114,10 +110,10 @@ int main(int argc, char *argv[]) {
         sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
-    if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
-        printf("Error opening file %s\n", filename_simulation);
-        exit(1);
-    }
+    // if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
+    //     printf("Error opening file %s\n", filename_simulation);
+    //     exit(1);
+    // }
 
     if (strcmp(BC_type, "PBC") == 0){
         fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");

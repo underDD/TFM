@@ -330,12 +330,12 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
             }
         }
 
-        if (axon_simulation != NULL){
-            fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
-                    neuron_idx, segment_idx, subsegment_idx,
-                    x, y,
-                    x_next, y_next);
-        }
+        // if (axon_simulation != NULL){
+        //     fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
+        //             neuron_idx, segment_idx, subsegment_idx,
+        //             x, y,
+        //             x_next, y_next);
+        // }
 
         subsegment_idx++;
 
@@ -829,12 +829,12 @@ void sticky_circle2D(double initial_segment_vector_x, double initial_segment_vec
                 }
             }
 
-            if (axon_simulation != NULL) {
-                fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
-                        neuron_idx, segment_idx, subsegment_idx,
-                        x, y,
-                        x_next, y_next);
-            }
+            // if (axon_simulation != NULL) {
+            //     fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
+            //             neuron_idx, segment_idx, subsegment_idx,
+            //             x, y,
+            //             x_next, y_next);
+            // }
 
             subsegment_idx++;
         }

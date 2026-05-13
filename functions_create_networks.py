@@ -12,16 +12,16 @@ from numba import njit
 sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
 # @njit
-def load_neuron_params(filename, nrows_skiped=15):
+def load_neuron_params(filename, nrows_skiped=1):
         data = np.loadtxt(filename, skiprows=nrows_skiped)
         return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4]
 # # @njit
 def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_control = True, new_sim = False):
 
     if parameters2D["agg"] == 0:
-        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_d{parameters2D['d_mean']:.2f}.txt"
     else:
-        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_d{parameters2D['d_mean']:.2f}.txt"
 
     filepath = Path(filename)
 
@@ -60,13 +60,16 @@ def run_2D_tune_positions(parameters2D, show_prints_c = False, show_prints_contr
 
     return filename
 # @njit
-def create_network2D(parameters2D, show_prints_c = False, show_prints_control = True, new_sim = False):
+def create_network2D(parameters2D, filename_neuron_params = None, sim_l = False, show_prints_c = False, show_prints_control = True, new_sim = False):
     
     if parameters2D["agg"] == 0:
-        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename_params = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_d{parameters2D['d_mean']:.2f}.txt"
     else:
-        filename = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}.txt"
+        filename_params = f"2D_initial_configurations/2D_neurons_params_{parameters2D['geometry']}_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_d{parameters2D['d_mean']:.2f}.txt"
 
+    if sim_l:
+        filename_params = filename_neuron_params
+    
     # --------------------------------
 
     if parameters2D["agg"] == 0:
@@ -82,7 +85,21 @@ def create_network2D(parameters2D, show_prints_c = False, show_prints_control = 
         if show_prints_control:
             print("Creating configuration:", output_filename)
 
-        result = subprocess.run(["./2D_create_network.exe", filename],
+        result = subprocess.run([
+            "./2D_create_network.exe", 
+            filename_params, 
+            str(parameters2D["L"]),
+            str(parameters2D["rho"]),
+            str(parameters2D["soma_diameter"]),
+            str(parameters2D["d_mean"]),
+            str(parameters2D["d_sigma"]),
+            str(parameters2D["l_mean"]),
+            str(parameters2D["segment_length"]),
+            str(parameters2D["sigma_axon_angle"]),
+            str(parameters2D["n_centers"]),
+            str(parameters2D["base_sigma"]),
+            str(parameters2D["BC_type"]),
+            str(parameters2D["geometry"])],
         capture_output=True,
         text=True)
         
@@ -289,9 +306,9 @@ def neuron_map_gini2D(filename, parameters2D):
 # @njit
 def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_control = True, new_sim = False):
     if parameters3D["agg"] == 0:
-        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
-        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_d{parameters3D['d_mean']:.2f}.txt"
     filepath = Path(filename)
 
     # =========================
@@ -320,7 +337,8 @@ def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_contr
             str(parameters3D["agg"]),
             str(parameters3D["n_centers"]),
             str(parameters3D["base_sigma"]),
-            str(parameters3D["BC_type"])
+            str(parameters3D["BC_type"]),
+            str(parameters3D["geometry"])
         ], capture_output=True, text=True)
 
         if show_prints_c:
@@ -405,16 +423,16 @@ def neuron_map_adj2D(filename_in, A, parameters2D, n_grid=20):
 def create_network3D(parameters3D, show_prints_c = False, show_prints_control = True, new_sim = False):
 
     if parameters3D["agg"] == 0:
-        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
-        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        filename = f"3D_initial_configurations/3D_neurons_params_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_d{parameters3D['d_mean']:.2f}.txt"
 
     # --------------------------------
 
     if parameters3D["agg"] == 0:
-        output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     else:
-        output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
+        output_filename = f"3D_created_networks/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}.txt"
     
     filepath = Path(output_filename)
     if filepath.exists() and not new_sim:
@@ -424,9 +442,23 @@ def create_network3D(parameters3D, show_prints_c = False, show_prints_control = 
         if show_prints_control:
             print("Creating configuration:", output_filename)
 
-        result = subprocess.run(["./3D_create_network.exe", filename],
-        capture_output=True,
-        text=True)
+        result = subprocess.run([
+            "./3D_create_network.exe", 
+            filename,
+            str(parameters3D["L"]),
+            str(parameters3D["rho"]),
+            str(parameters3D["soma_diameter"]),
+            str(parameters3D["d_mean"]),
+            str(parameters3D["d_sigma"]),
+            str(parameters3D["l_mean"]),
+            str(parameters3D["segment_length"]),
+            str(parameters3D["sigma_pol"]),
+            str(parameters3D["sigma_azi"]),
+            str(parameters3D["n_centers"]),
+            str(parameters3D["base_sigma"]),
+            str(parameters3D["BC_type"]),
+            str(parameters3D["geometry"])
+        ],capture_output=True, text=True)
         
         if show_prints_c:
             print(result.stdout)
@@ -434,7 +466,7 @@ def create_network3D(parameters3D, show_prints_c = False, show_prints_control = 
 
     return output_filename
 # @njit
-def load_neuron_params_3D(filename, nrows_skiped=15):
+def load_neuron_params_3D(filename, nrows_skiped=1):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
     return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4], data[:,5]
 # @njit
@@ -577,7 +609,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pypalettes import load_cmap
 # @njit
-def load_neuron_params_3D(filename, nrows_skiped=15):
+def load_neuron_params_3D(filename, nrows_skiped=1):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
     return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4], data[:,5]
 # @njit
@@ -895,11 +927,14 @@ def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False):
 
         # Quitar autoconexiones
         np.fill_diagonal(A_new, 0)
+
         A_new = get_GC(A_new)
 
         pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
     
     return A_new, output_filename
+
+
 # @njit
 def detect_peaks_adaptive(signal, time=None, smooth=True,
                           window_length=11, polyorder=3,
@@ -1528,6 +1563,40 @@ def compile_c_codes():
         "2D_dynamics.exe",
         "-lm"
     ], check=True)
+
+def compile_c_codes3D():
+    gcc = "C:/msys64/ucrt64/bin/gcc.exe"
+
+    subprocess.run([
+        gcc, 
+        "-O3",
+        "3D_create_network.c", 
+        "3D_functions.c",
+        "-o", 
+        "3D_create_network.exe",
+        "-lm"
+    ], check=True)
+
+    subprocess.run([
+        gcc, 
+        "-Wall", 
+        "-O3",
+        "3D_tune_positions.c", 
+        "3D_functions.c",
+        "-o", 
+        "3D_tune_positions.exe",
+        "-lm"
+    ], check=True)
+
+    subprocess.run([
+        gcc,
+        "-O3",
+        "3D_dynamics.c", 
+        "3D_functions.c",
+        "-o", 
+        "3D_dynamics.exe",
+        "-lm"
+    ], check=True)
 # @njit
 def get_GC(A):
     G = nx.from_numpy_array(A, create_using=nx.DiGraph)
@@ -1855,6 +1924,140 @@ def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, param
 
     plt.tight_layout()
     plt.show()
+
+def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, parametersStructure, order=None):
+    
+    X, Y, Z, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params_3D(filename_neuron_params)
+
+    L = parametersStructure["L"]
+    geometry = "cube"
+
+    xmin = ymin = zmin = -L/2
+    xmax = ymax = zmax = L/2
+
+    R = L / 2
+
+    # =====================================================
+    # Gini 3D
+    # =====================================================
+
+    n_grid = 30
+
+    H, edges = np.histogramdd(
+        np.vstack([X, Y, Z]).T,
+        bins=n_grid,
+        range=[[xmin, xmax], [ymin, ymax], [zmin, zmax]]
+    )
+
+    if geometry == "cube":
+        H_valid = H.flatten()
+
+    elif geometry == "sphere":
+        x_centers = 0.5 * (edges[0][:-1] + edges[0][1:])
+        y_centers = 0.5 * (edges[1][:-1] + edges[1][1:])
+        z_centers = 0.5 * (edges[2][:-1] + edges[2][1:])
+
+        Xc, Yc, Zc = np.meshgrid(
+            x_centers, y_centers, z_centers,
+            indexing="ij"
+        )
+
+        mask_sphere = Xc**2 + Yc**2 + Zc**2 <= R**2
+
+        H_valid = H[mask_sphere]
+
+    else:
+        raise ValueError(f"Unknown geometry: {geometry}")
+
+    bin_sum = H_valid.sum()
+
+    H_flat = np.sort(H_valid.flatten())[::-1]
+
+    G = np.zeros(len(H_flat))
+    sum_gini = 0.0
+
+    for i, h in enumerate(H_flat):
+        sum_gini += h
+        G[i] = sum_gini / bin_sum
+
+    bins = np.arange(1, len(H_flat) + 1)
+    bins = bins / len(H_flat)
+
+    area_between = np.trapezoid(G - bins, bins)
+    Gini = 2 * area_between
+
+    # =====================================================
+    # PLOTS
+    # =====================================================
+
+    fig = plt.figure(figsize=(12, 5))
+
+    ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+    ax2 = fig.add_subplot(1, 2, 2)
+
+    # =====================================================
+    # Neurons in 3D space
+    # =====================================================
+
+    ax1.scatter(
+        X, Y, Z,
+        s=7,
+        color=viridis(0.05),
+        alpha=0.8,
+        depthshade=True
+    )
+
+    ax1.set_xlabel("X (mm)", fontsize=14, labelpad=10)
+    ax1.set_ylabel("Y (mm)", fontsize=14, labelpad=10)
+    ax1.set_zlabel("Z (mm)", fontsize=14, labelpad=10)
+
+    ax1.set_xlim(xmin, xmax)
+    ax1.set_ylim(ymin, ymax)
+    ax1.set_zlim(zmin, zmax)
+
+    ax1.set_box_aspect([1, 1, 1])
+
+    ax1.tick_params(axis='both', which='major', labelsize=12)
+
+    ax1.text2D(
+        0.05, 0.95,
+        r"$\Lambda = $" + f"{Gini:.2f}",
+        transform=ax1.transAxes,
+        fontsize=14,
+        verticalalignment='top',
+        bbox=dict(
+            boxstyle="square,pad=0.55",
+            facecolor="white",
+            alpha=0.9,
+            edgecolor="none"
+        )
+    )
+
+    # =====================================================
+    # Adjacency matrix
+    # =====================================================
+
+    A = load_A(filename_adj)
+
+    if order is not None:
+        A = A[np.ix_(order, order)]
+
+    ax2.imshow(
+        A,
+        aspect="equal",
+        interpolation="nearest",
+        cmap="binary",
+        vmin=0,
+        vmax=1
+    )
+
+    ax2.set_xlabel("Neuron", fontsize=18)
+    ax2.set_ylabel("Neuron", fontsize=18)
+    ax2.tick_params(axis='both', which='major', labelsize=16)
+
+    plt.tight_layout()
+    plt.show()
+
 # @njit
 def compute_spatial_gini(X, Y, L, geometry="square", n_grid=30):
     """
@@ -1922,6 +2125,7 @@ def compute_spatial_gini(X, Y, L, geometry="square", n_grid=30):
     Gini = 2 * area_between
 
     return Gini, H, x_edges, y_edges, mask_valid
+
 # @njit
 def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim = None):
 
@@ -1931,7 +2135,11 @@ def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim
 
     sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
-    F_ordered = F[np.ix_(order, order)]
+    if order is not None:
+        F_ordered = F[np.ix_(order, order)]
+    else:
+        F_ordered = F.copy()
+
 
     fig = plt.figure(figsize=(8, 5))
 

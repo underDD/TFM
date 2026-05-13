@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     if (agg == 0){
         
         FILE *neurons_params;
-        sprintf(filename, "2D_initial_configurations/2D_neurons_params_%s_%s_random_L%.1lf_rho%.0f_l%.2lf_d%.2f.txt", geometry, BC_type, L, rho, l_mean, d_mean);
+        sprintf(filename, "2D_initial_configurations/2D_neurons_params_%s_%s_random_L%.1lf_rho%.0f_d%.2f.txt", geometry, BC_type, L, rho, d_mean);
         if ((neurons_params = fopen(filename, "w")) == NULL) {
             printf("Error opening file %s\n", filename);
             exit(1);
@@ -90,20 +90,6 @@ int main(int argc, char *argv[]) {
         printf("Geometry = %s\n", geometry);
         printf("Output file: %s\n", filename);  
         
-        fprintf(neurons_params, "L = %.1lf\n", L);
-        fprintf(neurons_params, "rho = %.0f\n", rho);
-        fprintf(neurons_params, "soma_diameter = %.3lf\n", soma_diameter);
-        fprintf(neurons_params, "d_mean = %.3lf\n", d_mean);
-        fprintf(neurons_params, "d_sigma = %.3lf\n", d_sigma);
-        fprintf(neurons_params, "l_mean = %.3lf\n", l_mean);
-        fprintf(neurons_params, "l_sigma = %.3lf\n", l_sigma);
-        fprintf(neurons_params, "sigma_rayleigh = %.3lf\n", sigma_rayleigh);
-        fprintf(neurons_params, "segment_length = %.3lf\n", segment_length);
-        fprintf(neurons_params, "sigma_axon_angle = %.3lf\n", sigma_axon_angle);
-        fprintf(neurons_params, "nc = %d\n", 0);
-        fprintf(neurons_params, "base_sigma = %.4lf\n", 0.0);
-        fprintf(neurons_params, "BC_type = %s\n", BC_type);
-        fprintf(neurons_params, "Geometry = %s\n", geometry);
         fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
         
         bool overlap;
@@ -172,7 +158,7 @@ int main(int argc, char *argv[]) {
         // base_sigma = 0.05; // Base sigma for the Gaussian distribution of the centers of aggregation
         variation_sigma = base_sigma * 0.1; // Variation of sigma for each center (10% of the base sigma)
         
-        sprintf(filename, "2D_initial_configurations/2D_neurons_params_%s_%s_agg_nc%d_s%.4f_L%.1f_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename, "2D_initial_configurations/2D_neurons_params_%s_%s_agg_nc%d_s%.4f_L%.1f_rho%.0f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, d_mean);
         FILE *neurons_params;
         
         if ((neurons_params = fopen(filename, "w")) == NULL) {
@@ -196,21 +182,6 @@ int main(int argc, char *argv[]) {
         printf("base_sigma = %.3lf\n", base_sigma);
         printf("Geometry = %s\n", geometry);
         printf("Output file: %s\n", filename);
-        
-        fprintf(neurons_params, "L = %.1lf\n", L);
-        fprintf(neurons_params, "rho = %.0f\n", rho);
-        fprintf(neurons_params, "soma_diameter = %.3lf\n", soma_diameter);
-        fprintf(neurons_params, "d_mean = %.3lf\n", d_mean);
-        fprintf(neurons_params, "d_sigma = %.3lf\n", d_sigma);
-        fprintf(neurons_params, "l_mean = %.3lf\n", l_mean);
-        fprintf(neurons_params, "l_sigma = %.3lf\n", l_sigma);
-        fprintf(neurons_params, "sigma_rayleigh = %.3lf\n", sigma_rayleigh);
-        fprintf(neurons_params, "segment_length = %.3lf\n", segment_length);
-        fprintf(neurons_params, "sigma_axon_angle = %.3lf\n", sigma_axon_angle);
-        fprintf(neurons_params, "nc = %d\n", n_centers);
-        fprintf(neurons_params, "base_sigma = %.4lf\n", base_sigma);
-        fprintf(neurons_params, "BC_type = %s\n", BC_type);
-        fprintf(neurons_params, "Geometry = %s\n", geometry);
 
         fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
         
@@ -256,12 +227,13 @@ int main(int argc, char *argv[]) {
                         PBC(&Y[idx], L);
                     }
                     else{
+                        double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
                         if (strcmp(geometry, "square") == 0){
                             do {
                                 X[idx] = mean_x + sigma_x * box_muller();
                                 Y[idx] = mean_y + sigma_y * box_muller();
-                            } while (X[idx] < -L/2.0 || X[idx] > L/2.0 ||
-                                    Y[idx] < -L/2.0 || Y[idx] > L/2.0);
+                            } while (X[idx] < -L/2.0 + margin || X[idx] > L/2.0 - margin ||
+                                    Y[idx] < -L/2.0 + margin || Y[idx] > L/2.0 - margin);
                         }
                         else if (strcmp(geometry, "circle") == 0){
                             double margin = soma_diameter/2.0; // Margin to avoid placing centers too close to the borders when using non-periodic BC
