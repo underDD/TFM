@@ -2,8 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 2){
-        printf("Usage: %s filename\n", argv[0]);
+    if (argc < 15) {
+        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi n_centers base_sigma BC_type geometry\n", argv[0]);
         return 1;
     }
 
@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     int n_centers;
     double base_sigma;
     double alpha; 
+    double R, height;
 
     double *somas;
     double *dendrites_diameters;
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
     n_centers = atoi(argv[11]);
     base_sigma = atof(argv[12]);
     strcpy(BC_type, argv[13]);
-    strcmp(geometry, argv[14]);
+    strcpy(geometry, argv[14]);
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -59,7 +60,14 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     
-    N = (int)(rho * L * L * L);
+    if (strcmp(geometry, "cube") == 0){
+        N = (int)(rho * L * L * L);
+    }
+    else if (strcmp(geometry, "cylinder") == 0){
+        R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
+        height = L; // Keep the same height as the side of the square
+        N = (int)(rho * PI * R * R * height);
+    }
 
     printf("Parameters loaded from file: %s\n", filename);
     printf("L = %.1lf\n", L);
@@ -230,14 +238,36 @@ int main(int argc, char *argv[]) {
                     initial_angle_azi = atan2(dy, dx);
                     initial_angle_pol = acos(dz / sqrt(dx*dx + dy*dy + dz*dz));
                 }
-            else if (strcmp(geometry, "sphere") == 0 && strcmp(BC_type, "SW") == 0){
-                // sticky_cilinder3D(initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z, 
-                //                 &dx, &dy, &dz, L, &end_segment_vector_x, &end_segment_vector_y, &end_segment_vector_z, X, Y, Z, 
-                //                 dendrites_diameters, i, N, AdjMatrix_flat, &trials, &links, axon_simulation, i, k);
+            }
+            else if (strcmp(geometry, "cylinder") == 0 && strcmp(BC_type, "SW") == 0){
+                int stop_axon = sticky_cylinder3D(
+                    initial_segment_vector_x,
+                    initial_segment_vector_y,
+                    initial_segment_vector_z,
+                    &dx, &dy, &dz,
+                    L,
+                    &end_segment_vector_x,
+                    &end_segment_vector_y,
+                    &end_segment_vector_z,
+                    X, Y, Z,
+                    dendrites_diameters,
+                    i, N,
+                    AdjMatrix_flat,
+                    &trials, &links,
+                    axon_simulation,
+                    i, k
+                );
 
-                if (dx*dx + dy*dy + dz*dz > 1e-15){
+                if (dx*dx + dy*dy + dz*dz > 1e-15) {
                     initial_angle_azi = atan2(dy, dx);
                     initial_angle_pol = acos(dz / sqrt(dx*dx + dy*dy + dz*dz));
+                }
+
+                if (stop_axon) {
+                    initial_segment_vector_x = end_segment_vector_x;
+                    initial_segment_vector_y = end_segment_vector_y;
+                    initial_segment_vector_z = end_segment_vector_z;
+                    break;
                 }
             
             }

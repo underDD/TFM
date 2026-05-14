@@ -25,12 +25,12 @@ int main(int argc, char *argv[]) {
     int n_centers;
     double base_sigma;
 
-    if (argc != 14) {
+    if (argc != 15) {
         printf("Uso:\n");
-        printf("%s L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi agg n_centers base_sigma\n", argv[0]);
+        printf("%s L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi agg n_centers base_sigma geometry\n", argv[0]);
         return 1;
     }
-
+ 
     L = atof(argv[1]);
     rho = atof(argv[2]);
     soma_diameter = atof(argv[3]);
@@ -45,16 +45,18 @@ int main(int argc, char *argv[]) {
     base_sigma = atof(argv[12]);
     strcpy(BC_type, argv[13]);
     strcpy(geometry, argv[14]);
+    
 
-    if (strcmp(geometry, "square") == 0){
+    if (strcmp(geometry, "cube") == 0){
         N = (int)(rho * L * L * L);
     }
-    else if (strcmp(geometry, "circle") == 0){
+    else if (strcmp(geometry, "cylinder") == 0){
         R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
-        N = (int)(rho * PI * R * R);
+        height = L; // Keep the same height as the side of the square
+        N = (int)(rho * PI * R * R * height);
     }
 
-    N = (int)(rho * L * L * L);
+    // N = (int)(rho * L * L * L);
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
     
@@ -104,7 +106,7 @@ int main(int argc, char *argv[]) {
                     Y[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                     Z[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                 }
-                else if (strcmp(geometry, "cilinder") == 0){
+                else if (strcmp(geometry, "cylinder") == 0){
                     double R_eff = R - margin; // Effective radius to ensure centers are not too close to the border
                     double radius = R_eff * sqrt(randomInPR(0.0, 1.0)); 
                     double angle = randomInPR(0.0, 2*PI); // Random
@@ -215,7 +217,7 @@ int main(int argc, char *argv[]) {
                     mean_z = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                 }
 
-                else if (strcmp(geometry, "cilinder") == 0){
+                else if (strcmp(geometry, "cylinder") == 0){
                     double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
                     double R_eff = R - margin; // Effective radius to ensure centers are not too close to the border
                     double radius = R_eff * sqrt(randomInPR(0.0, 1.0)); 
@@ -251,7 +253,7 @@ int main(int argc, char *argv[]) {
                                    Y[idx] < -L/2.0 + margin || Y[idx] > L/2.0 - margin ||
                                    Z[idx] < -L/2.0 + margin || Z[idx] > L/2.0 - margin);
                         }
-                        else if (strcmp(geometry, "cilinder") == 0){
+                        else if (strcmp(geometry, "cylinder") == 0){
                             double margin = soma_diameter / 2.0;
                             double R_eff = R - margin;
                             double radius;

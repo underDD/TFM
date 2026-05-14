@@ -88,4 +88,16 @@ int simulate_izhikevich(
     double noise_max,
     const char *output_filename
 );
+
+int sticky_cylinder3D(double initial_x, double initial_y, double initial_z,
+                      double *dx, double *dy, double *dz,
+                      double L,
+                      double *end_x, double *end_y, double *end_z,
+                      double *X, double *Y, double *Z,
+                      double *dendrites_diameters,
+                      int i, int N_neurons,
+                      uint8_t *AdjMatrix_flat,
+                      int *trials, int *links,
+                      FILE *axon_simulation,
+                      int neuron_idx, int segment_idx);
 //************************************

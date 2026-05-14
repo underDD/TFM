@@ -85,6 +85,9 @@ def create_network2D(parameters2D, filename_neuron_params = None, sim_l = False,
         if show_prints_control:
             print("Creating configuration:", output_filename)
 
+        if parameters2D["agg"] == 0:
+            parameters2D["n_centers"] = 0
+
         result = subprocess.run([
             "./2D_create_network.exe", 
             filename_params, 
@@ -146,9 +149,9 @@ def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints_c=False
 def run_dynamics_3D(parametersDynamics, parameters3D, alpha, show_prints_c=False, show_prints_control=True, new_sim=False, sim_number=0):
 
     if parameters3D["agg"] == 0:
-        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
+        filename = f"3D_dynamics/3D_dynamics_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
     else:
-        filename = f"3D_dynamics/3D_dynamics_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
+        filename = f"3D_dynamics/3D_dynamics_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
 
     path = Path(filename)
     if path.exists() and (new_sim == False):
@@ -196,8 +199,8 @@ def neuron_map_gini2D(filename, parameters2D):
     L = parameters2D["L"]
     xmin = ymin = -L/2
     xmax = ymax = L/2
-    n_grid = 20
-
+    cell_size = 0.1 # mm
+    n_grid = int(np.round(L / cell_size))
     # =========================
     # HISTOGRAMA 2D
     # =========================
@@ -212,7 +215,7 @@ def neuron_map_gini2D(filename, parameters2D):
 
     sum_gini = 0.0
     H_flat = H.flatten()
-    H_flat.sort()
+    H_flat.sort() # Ordenar de menor a mayor
     H_flat = H_flat[::-1]
 
     G = np.zeros(len(H_flat))
@@ -322,6 +325,9 @@ def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_contr
     else:
         if show_prints_control:
             print("Creating configuration:", filename)
+
+        if parameters3D["agg"] == 0:
+            parameters3D["n_centers"] = 0
 
         result = subprocess.run([
             "./3D_tune_positions.exe",
@@ -905,9 +911,9 @@ def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False):
     new_sim: flag para indicar si es una nueva simulación
     """
     if parameters3D["agg"] == 0:
-        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
+        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
     else:
-        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
+        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
 
     path = Path(output_filename)
     if path.exists() and not new_sim:
@@ -1567,7 +1573,7 @@ def compile_c_codes():
 def compile_c_codes3D():
     gcc = "C:/msys64/ucrt64/bin/gcc.exe"
 
-    subprocess.run([
+    create = subprocess.run([
         gcc, 
         "-O3",
         "3D_create_network.c", 
@@ -1575,9 +1581,9 @@ def compile_c_codes3D():
         "-o", 
         "3D_create_network.exe",
         "-lm"
-    ], check=True)
+    ],check = True, capture_output=True)
 
-    subprocess.run([
+    tune_positions = subprocess.run([
         gcc, 
         "-Wall", 
         "-O3",
@@ -1586,9 +1592,9 @@ def compile_c_codes3D():
         "-o", 
         "3D_tune_positions.exe",
         "-lm"
-    ], check=True)
+    ], check=True, capture_output=True)
 
-    subprocess.run([
+    dynamics = subprocess.run([
         gcc,
         "-O3",
         "3D_dynamics.c", 
@@ -1596,7 +1602,7 @@ def compile_c_codes3D():
         "-o", 
         "3D_dynamics.exe",
         "-lm"
-    ], check=True)
+    ], check=True, capture_output=True)
 # @njit
 def get_GC(A):
     G = nx.from_numpy_array(A, create_using=nx.DiGraph)
@@ -1766,7 +1772,9 @@ def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, param
 
     xmin = ymin = -L/2
     xmax = ymax = L/2
-    n_grid = 30
+
+    cell_size = 0.1 # mm
+    n_grid = int(np.round(L / cell_size))
 
     R = L / 2
 
@@ -1930,7 +1938,7 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
     X, Y, Z, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params_3D(filename_neuron_params)
 
     L = parametersStructure["L"]
-    geometry = "cube"
+    geometry = parametersStructure["geometry"]
 
     xmin = ymin = zmin = -L/2
     xmax = ymax = zmax = L/2
@@ -1941,7 +1949,8 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
     # Gini 3D
     # =====================================================
 
-    n_grid = 30
+    cell_size = 0.1  # mm
+    n_grid = int(np.round(L / cell_size))
 
     H, edges = np.histogramdd(
         np.vstack([X, Y, Z]).T,
@@ -1963,8 +1972,21 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
         )
 
         mask_sphere = Xc**2 + Yc**2 + Zc**2 <= R**2
-
         H_valid = H[mask_sphere]
+
+    elif geometry == "cylinder":
+
+        x_centers = 0.5 * (edges[0][:-1] + edges[0][1:])
+        y_centers = 0.5 * (edges[1][:-1] + edges[1][1:])
+        z_centers = 0.5 * (edges[2][:-1] + edges[2][1:])
+
+        Xc, Yc, Zc = np.meshgrid(
+            x_centers, y_centers, z_centers,
+            indexing="ij"
+        )
+
+        mask_cylinder = Xc**2 + Yc**2 <= R**2
+        H_valid = H[mask_cylinder]
 
     else:
         raise ValueError(f"Unknown geometry: {geometry}")
@@ -2006,6 +2028,89 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
         alpha=0.8,
         depthshade=True
     )
+
+    # =====================================================
+    # Draw geometry
+    # =====================================================
+
+    if geometry == "cube":
+
+        # Cube edges
+        corners = np.array([
+            [xmin, ymin, zmin],
+            [xmax, ymin, zmin],
+            [xmax, ymax, zmin],
+            [xmin, ymax, zmin],
+            [xmin, ymin, zmax],
+            [xmax, ymin, zmax],
+            [xmax, ymax, zmax],
+            [xmin, ymax, zmax],
+        ])
+
+        edges_cube = [
+            (0, 1), (1, 2), (2, 3), (3, 0),
+            (4, 5), (5, 6), (6, 7), (7, 4),
+            (0, 4), (1, 5), (2, 6), (3, 7)
+        ]
+
+        for a, b in edges_cube:
+            ax1.plot(
+                [corners[a, 0], corners[b, 0]],
+                [corners[a, 1], corners[b, 1]],
+                [corners[a, 2], corners[b, 2]],
+                color="black",
+                lw=0.8,
+                alpha=0.5
+            )
+
+    elif geometry == "cylinder":
+
+        theta = np.linspace(0, 2*np.pi, 100)
+        z_vals = np.linspace(zmin, zmax, 2)
+
+        # Top and bottom circles
+        x_circle = R * np.cos(theta)
+        y_circle = R * np.sin(theta)
+
+        ax1.plot(
+            x_circle, y_circle, zmin*np.ones_like(theta),
+            color="black", lw=1.0, alpha=0.6
+        )
+
+        ax1.plot(
+            x_circle, y_circle, zmax*np.ones_like(theta),
+            color="black", lw=1.0, alpha=0.6
+        )
+
+        # Vertical side lines
+        for angle in np.linspace(0, 2*np.pi, 12, endpoint=False):
+            x_line = R * np.cos(angle)
+            y_line = R * np.sin(angle)
+
+            ax1.plot(
+                [x_line, x_line],
+                [y_line, y_line],
+                [zmin, zmax],
+                color="black",
+                lw=0.6,
+                alpha=0.35
+            )
+
+    elif geometry == "sphere":
+
+        u = np.linspace(0, 2*np.pi, 40)
+        v = np.linspace(0, np.pi, 20)
+
+        xs = R * np.outer(np.cos(u), np.sin(v))
+        ys = R * np.outer(np.sin(u), np.sin(v))
+        zs = R * np.outer(np.ones_like(u), np.cos(v))
+
+        ax1.plot_wireframe(
+            xs, ys, zs,
+            color="black",
+            linewidth=0.4,
+            alpha=0.25
+        )
 
     ax1.set_xlabel("X (mm)", fontsize=14, labelpad=10)
     ax1.set_ylabel("Y (mm)", fontsize=14, labelpad=10)

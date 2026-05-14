@@ -2,8 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 2){
-        printf("Usage: %s filename\n", argv[1]);
+    if (argc < 14){
+        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_axon_angle n_centers base_sigma BC_type geometry\n", argv[0]);
         return 1;
     }
     

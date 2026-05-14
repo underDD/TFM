@@ -700,3 +700,238 @@ int simulate_izhikevich(
     free(a); free(b); free(c); free(d); free(v); free(u); free(I); free(S); free(fired);
     return 0;
 }
+
+int sticky_cylinder3D(double initial_x, double initial_y, double initial_z,
+                      double *dx, double *dy, double *dz,
+                      double L,
+                      double *end_x, double *end_y, double *end_z,
+                      double *X, double *Y, double *Z,
+                      double *dendrites_diameters,
+                      int i, int N_neurons,
+                      uint8_t *AdjMatrix_flat,
+                      int *trials, int *links,
+                      FILE *axon_simulation,
+                      int neuron_idx, int segment_idx)
+{
+    double eps = 1e-12;
+
+    double R = L / 2.0;
+    double zmin = -L / 2.0;
+    double zmax =  L / 2.0;
+
+    double x = initial_x;
+    double y = initial_y;
+    double z = initial_z;
+
+    double total_len = sqrt((*dx)*(*dx) + (*dy)*(*dy) + (*dz)*(*dz));
+
+    if (total_len < eps) {
+        *end_x = x;
+        *end_y = y;
+        *end_z = z;
+        *dx = *dy = *dz = 0.0;
+        return 0;
+    }
+
+    double ux = (*dx) / total_len;
+    double uy = (*dy) / total_len;
+    double uz = (*dz) / total_len;
+
+    double remaining = total_len;
+    int subsegment_idx = 0;
+    int stop_axon = 0;
+
+    // Corrección si empieza ligeramente fuera del cilindro
+    double r0 = sqrt(x*x + y*y);
+    if (r0 > R) {
+        x = x / r0 * R;
+        y = y / r0 * R;
+    }
+    if (z < zmin) z = zmin;
+    if (z > zmax) z = zmax;
+
+    while (remaining > eps && !stop_axon) {
+
+        double s_hit = remaining;
+        int hit_type = 0; 
+        // 0 = no hit, 1 = pared lateral, 2 = tapa/base
+
+        // ======================================================
+        // 1) Posible choque con tapa o base
+        // ======================================================
+
+        if (uz > eps) {
+            double s = (zmax - z) / uz;
+            if (s >= -eps && s < s_hit) {
+                s_hit = s;
+                hit_type = 2;
+            }
+        }
+        else if (uz < -eps) {
+            double s = (zmin - z) / uz;
+            if (s >= -eps && s < s_hit) {
+                s_hit = s;
+                hit_type = 2;
+            }
+        }
+
+        // ======================================================
+        // 2) Posible choque con pared lateral: x² + y² = R²
+        // ======================================================
+
+        double a = ux*ux + uy*uy;
+        double b = 2.0 * (x*ux + y*uy);
+        double c = x*x + y*y - R*R;
+
+        if (a > eps) {
+            double disc = b*b - 4.0*a*c;
+
+            if (disc >= 0.0) {
+                double sqrt_disc = sqrt(disc);
+
+                double s1 = (-b - sqrt_disc) / (2.0*a);
+                double s2 = (-b + sqrt_disc) / (2.0*a);
+
+                double s_wall = DBL_MAX;
+
+                if (s1 > eps && s1 < s_wall) s_wall = s1;
+                if (s2 > eps && s2 < s_wall) s_wall = s2;
+
+                if (s_wall < s_hit && s_wall <= remaining + eps) {
+                    s_hit = s_wall;
+                    hit_type = 1;
+                }
+            }
+        }
+
+        // ======================================================
+        // 3) Avanzar hasta el siguiente evento
+        // ======================================================
+
+        double x_next = x + s_hit * ux;
+        double y_next = y + s_hit * uy;
+        double z_next = z + s_hit * uz;
+
+        // Correcciones numéricas
+        double r_next = sqrt(x_next*x_next + y_next*y_next);
+        if (r_next > R && r_next > eps) {
+            x_next = x_next / r_next * R;
+            y_next = y_next / r_next * R;
+        }
+
+        if (fabs(z_next - zmax) < 1e-10) z_next = zmax;
+        if (fabs(z_next - zmin) < 1e-10) z_next = zmin;
+
+        double seg_dx = x_next - x;
+        double seg_dy = y_next - y;
+        double seg_dz = z_next - z;
+
+        // ======================================================
+        // 4) Intersecciones en este subsegmento
+        // ======================================================
+
+        if (seg_dx*seg_dx + seg_dy*seg_dy + seg_dz*seg_dz > eps*eps) {
+
+            for (int j = 0; j < N_neurons; j++) {
+
+                if (j == i) continue;
+
+                if (new_axon_intersection_noPBC_3D(
+                        X[j], Y[j], Z[j],
+                        dendrites_diameters[j],
+                        x, y, z,
+                        seg_dx, seg_dy, seg_dz
+                    ))
+                {
+                    (*trials)++;
+                    AdjMatrix_flat[i*N_neurons + j] += 1;
+                    (*links)++;
+                }
+            }
+
+            /*
+            if (axon_simulation != NULL) {
+                fprintf(axon_simulation,
+                        "%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\n",
+                        neuron_idx, segment_idx, subsegment_idx,
+                        x, y, z,
+                        x_next, y_next, z_next);
+            }
+            */
+
+            subsegment_idx++;
+        }
+
+        remaining -= s_hit;
+
+        x = x_next;
+        y = y_next;
+        z = z_next;
+
+        // ======================================================
+        // 5) Si toca tapa/base, se corta el axón
+        // ======================================================
+
+        if (hit_type == 2) {
+            stop_axon = 1;
+            break;
+        }
+
+        // ======================================================
+        // 6) Si toca pared lateral, proyectar dirección sobre
+        //    el plano tangente del cilindro
+        // ======================================================
+
+        if (remaining > eps && hit_type == 1) {
+
+            double r = sqrt(x*x + y*y);
+
+            if (r < eps) {
+                break;
+            }
+
+            // Normal lateral del cilindro
+            double nx = x / r;
+            double ny = y / r;
+            double nz = 0.0;
+
+            // Quitar componente normal: u_tan = u - (u·n)n
+            double dot = ux*nx + uy*ny + uz*nz;
+
+            ux = ux - dot * nx;
+            uy = uy - dot * ny;
+            uz = uz - dot * nz;
+
+            double norm_tan = sqrt(ux*ux + uy*uy + uz*uz);
+
+            if (norm_tan < eps) {
+                stop_axon = 1;
+                break;
+            }
+
+            ux /= norm_tan;
+            uy /= norm_tan;
+            uz /= norm_tan;
+        }
+    }
+
+    // Clamp final
+    double rf = sqrt(x*x + y*y);
+    if (rf > R && rf > eps) {
+        x = x / rf * R;
+        y = y / rf * R;
+    }
+
+    if (z < zmin) z = zmin;
+    if (z > zmax) z = zmax;
+
+    *end_x = x;
+    *end_y = y;
+    *end_z = z;
+
+    *dx = x - initial_x;
+    *dy = y - initial_y;
+    *dz = z - initial_z;
+
+    return stop_axon;
+}
