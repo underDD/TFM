@@ -48,9 +48,11 @@ int main(int argc, char *argv[]) {
         N_neurons = (int)(rho * L * L);
     }
     else if (strcmp(geometry, "circle") == 0){
-        R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
+        R = L / sqrt(PI); // Calculate the radius of the circle to maintain the same area as the square
         N_neurons = (int)(rho * PI * R * R);
     }
+
+    // N_neurons = (int)((L/soma_diameter) * (L/soma_diameter)); // Ensure the number of neurons does not exceed the maximum possible given the soma diameter
     
     sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
     l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma

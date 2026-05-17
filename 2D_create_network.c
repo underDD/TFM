@@ -62,9 +62,10 @@ int main(int argc, char *argv[]) {
         N_neurons = (int)(rho * L * L);
     }
     else if (strcmp(geometry, "circle") == 0){
-        R = L / 2.0; // Calculate the radius of the circle to maintain the same area as the square
+        R = L / sqrt(PI); // Calculate the radius of the circle to maintain the same area as the square
         N_neurons = (int)(rho * PI * R * R);
     }
+    // N_neurons = (int)((L/soma_diameter) * (L/soma_diameter)); // Ensure the number of neurons does not exceed the maximum possible given the soma diameter
 
     printf("Parameters loaded from file: %s\n", filename);
     printf("L = %.1lf\n", L);

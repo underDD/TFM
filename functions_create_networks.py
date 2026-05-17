@@ -730,8 +730,10 @@ def compute_GNA_from_raster(firings_t, firings_i, N, SIM_TIME, W=25):
         GNA[t-1] = active_count / N
     
     return GNA
+
 # @njit
 def find_GNA_peaks(GNA):
+
     prom = 0.2 * np.std(GNA)
 
     peaks, properties = find_peaks(
@@ -861,7 +863,7 @@ def Gini_coefficient(X, Y, n_grid, xmin, xmax, ymin, ymax):
     return Gini
 
 # @njit
-def modify_A_alpha2D(A, alpha, parameters2D, seed=None, new_sim = False):
+def modify_A_alpha2D(A, alpha, parameters2D, seed=None, new_sim = False, GC = True, sim= 0):
     """
     A: matriz de conteos (número de intersecciones m_ij)
     alpha: probabilidad de éxito por intento
@@ -870,15 +872,16 @@ def modify_A_alpha2D(A, alpha, parameters2D, seed=None, new_sim = False):
     new_sim: flag para indicar si es una nueva simulación
     """
     if parameters2D["agg"] == 0:
-        output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
+        output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_sim{sim}.txt"
     else:
-        output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['geometry']}_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}.txt"
+        output_filename = f"2D_dynamics/networks_for_dynamics/2D_adjacency_matrix_{parameters2D['geometry']}_{parameters2D['BC_type']}_agg_nc{parameters2D['n_centers']}_s{parameters2D['base_sigma']:.4f}_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_sim{sim}.txt"
 
     path = Path(output_filename)
     if path.exists() and not new_sim:
         # print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
         A_new = load_A(output_filename)
-        A_new = get_GC(A_new)
+        if GC:
+            A_new = get_GC(A_new)
     else:
         if not (0 <= alpha <= 1):
             raise ValueError("alpha debe estar entre 0 y 1")
@@ -893,16 +896,23 @@ def modify_A_alpha2D(A, alpha, parameters2D, seed=None, new_sim = False):
 
         # Quitar autoconexiones
         np.fill_diagonal(A_new, 0)
-        A_new = get_GC(A_new)
 
-        pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+        if GC:
+            A_new = get_GC(A_new)
+
+    pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+    A_check = load_A(output_filename)
+
+    # print("A_new shape:", A_new.shape)
+    # print("A_check shape:", A_check.shape)
+
+    assert A_check.shape == A_new.shape
     
-
     return A_new, output_filename
 
 
 # @njit
-def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False):
+def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False, sim = 0):
     """
     A: matriz de conteos (número de intersecciones m_ij)
     alpha: probabilidad de éxito por intento
@@ -911,14 +921,15 @@ def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False):
     new_sim: flag para indicar si es una nueva simulación
     """
     if parameters3D["agg"] == 0:
-        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
+        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_random_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_sim{sim}.txt"
     else:
-        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}.txt"
+        output_filename = f"3D_dynamics/networks_for_dynamics/3D_adjacency_matrix_{parameters3D['geometry']}_{parameters3D['BC_type']}_agg_nc{parameters3D['n_centers']}_s{parameters3D['base_sigma']:.4f}_L{parameters3D['L']:.1f}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_d{parameters3D['d_mean']:.2f}_a{alpha:.2f}_sim{sim}.txt"
 
     path = Path(output_filename)
     if path.exists() and not new_sim:
         print(f"Modified adjacency matrix already exists with alpha = {alpha:.2f}:", output_filename)
         A_new = load_A(output_filename)
+        A_new = get_GC(A_new)
     else:
         if not (0 <= alpha <= 1):
             raise ValueError("alpha debe estar entre 0 y 1")
@@ -936,8 +947,14 @@ def modify_A_alpha3D(A, alpha, parameters3D, seed=None, new_sim = False):
 
         A_new = get_GC(A_new)
 
-        pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
-    
+    pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
+    A_check = load_A(output_filename)
+
+    # print("A_new shape:", A_new.shape)
+    # print("A_check shape:", A_check.shape)
+
+    assert A_check.shape == A_new.shape
+
     return A_new, output_filename
 
 
@@ -1117,6 +1134,7 @@ def pearson_corr_matrix(M):
     return corr_matrix
 # @njit
 def plot_raster_interleaved_inhibitory(
+
     firings_t,
     firings_i,
     ax=None,
@@ -1208,17 +1226,16 @@ def plot_raster_interleaved_inhibitory(
 
 from numba import njit
 # @njit
-def degree_distribution(A_binary, normalize=False):
-    degrees = np.sum(A_binary, axis=1).astype(int)
+#
+def degree_distribution(A_binary, in_out = "out", normalize = True):
+    if in_out == "out":
+        degrees = np.sum(A_binary, axis=1).astype(int)
+    elif in_out == "in":
+        degrees = np.sum(A_binary, axis=0).astype(int)
     k_vals = np.arange(degrees.max() + 1)
-
-    pk = np.array([
-        np.sum(degrees == k) for k in k_vals
-    ], dtype=float)
-
-    if normalize and pk.sum() > 0:
-        pk /= pk.sum()
-
+    pk = np.array([np.sum(degrees == k) for k in k_vals], dtype=float)
+    pk /= pk.sum()
+    
     return k_vals, pk
 
 # @njit
@@ -1773,10 +1790,18 @@ def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, param
     xmin = ymin = -L/2
     xmax = ymax = L/2
 
+    
+
+    # n_grid = int(parametersStructure["L"]/parametersStructure["soma_diameter"])
+    
     cell_size = 0.1 # mm
     n_grid = int(np.round(L / cell_size))
 
-    R = L / 2
+    R = L / np.sqrt(np.pi)
+
+    if geometry == "circle":
+        xmin = ymin = -R
+        xmax = ymax = R
 
     H, x_edges, y_edges = np.histogram2d(
         X, Y,
@@ -1943,7 +1968,11 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
     xmin = ymin = zmin = -L/2
     xmax = ymax = zmax = L/2
 
-    R = L / 2
+    R = L / np.sqrt(np.pi)
+
+    if geometry == "cylinder":
+        xmin = ymin = -R
+        xmax = ymax = R
 
     # =====================================================
     # Gini 3D
@@ -2201,7 +2230,7 @@ def compute_spatial_gini(X, Y, L, geometry="square", n_grid=30):
 
     elif geometry == "circle":
 
-        R = L / 2
+        R = L / np.sqrt(np.pi)
 
         x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
         y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
@@ -2406,3 +2435,260 @@ def compute_network_metrics_from_GC(A_GC, N_total, seed=0):
         "assortativity": assortativity
     }
 
+
+def plot_square_vs_circle_degree(
+    file_square_params, file_square_adj,
+    file_circle_params, file_circle_adj,
+    parameters_square, parameters_circle,
+    degree_type="mean"
+):
+
+    datasets = [
+        ("Square", file_square_params, file_square_adj, parameters_square),
+        ("Circle", file_circle_params, file_circle_adj, parameters_circle)
+    ]
+
+    stored = []
+    all_degrees = []
+
+    for title, file_params, file_adj, params in datasets:
+
+        X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(file_params)
+
+        X = np.asarray(X, dtype=float).reshape(-1)
+        Y = np.asarray(Y, dtype=float).reshape(-1)
+
+        A = np.asarray(load_A(file_adj), dtype=float)
+
+        # print("\n---", title, "---")
+        # print("X:", X.shape)
+        # print("Y:", Y.shape)
+        # print("A:", A.shape)
+
+        if A.ndim != 2:
+            raise ValueError(f"{title}: A no es una matriz 2D. Tiene forma {A.shape}")
+
+        if A.shape[0] != A.shape[1]:
+            raise ValueError(f"{title}: A no es cuadrada. Tiene forma {A.shape}")
+
+        if len(X) != A.shape[0]:
+            raise ValueError(
+                f"{title}: número de neuronas no coincide. "
+                f"len(X)={len(X)}, len(Y)={len(Y)}, A.shape={A.shape}"
+            )
+
+        k_out = np.asarray(A.sum(axis=1), dtype=float).reshape(-1)
+        k_in = np.asarray(A.sum(axis=0), dtype=float).reshape(-1)
+
+        if degree_type == "out":
+            k = k_out
+            degree_label = "Out-degree"
+        elif degree_type == "in":
+            k = k_in
+            degree_label = "In-degree"
+        elif degree_type == "total":
+            k = k_in + k_out
+            degree_label = "Total degree"
+        elif degree_type == "mean":
+            k = 0.5 * (k_in + k_out)
+            degree_label = "Mean degree"
+        else:
+            raise ValueError("degree_type must be 'out', 'in', 'total' or 'mean'")
+
+        k = np.asarray(k, dtype=float).reshape(-1)
+
+        # print("k:", k.shape)
+
+        stored.append((title, X, Y, k, params))
+        all_degrees.append(k)
+
+    all_degrees = np.concatenate(all_degrees)
+    vmin, vmax = all_degrees.min(), all_degrees.max()
+
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
+
+    for ax, (title, X, Y, k, params) in zip(axs, stored):
+
+        L = params["L"]
+        geometry = params["geometry"]
+
+        if geometry == "circle":
+            R = L / np.sqrt(np.pi)
+            xmin = ymin = -R
+            xmax = ymax = R
+        else:
+            R = None
+            xmin = ymin = -L / 2
+            xmax = ymax = L / 2
+
+        if k.max() > k.min():
+            sizes = 15 + 90 * (k - vmin) / (vmax - vmin)
+        else:
+            sizes = np.ones(len(k)) * 40.0
+
+        sizes = np.asarray(sizes, dtype=float).reshape(-1)
+
+        # print("\nPLOT", title)
+        # print("len X:", len(X), "len Y:", len(Y), "len k:", len(k), "len sizes:", len(sizes))
+
+        sc = ax.scatter(
+            X,
+            Y,
+            c=k,
+            s=sizes,
+            cmap="viridis",
+            vmin=vmin,
+            vmax=vmax,
+            alpha=0.85,
+            edgecolors="black",
+            linewidths=0.25
+        )
+
+        if geometry == "circle":
+            circle = plt.Circle((0, 0), R, fill=False, color="black", lw=1.5)
+            ax.add_patch(circle)
+            # ax.spines['top'].set_visible(False)
+            # ax.spines['right'].set_visible(False)
+            # ax.spines['left'].set_visible(False)
+            # ax.spines['bottom'].set_visible(False)
+
+        ax.set_title(title, fontsize=18)
+        ax.set_xlabel("X (mm)", fontsize=16)
+        ax.set_ylabel("Y (mm)", fontsize=16)
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal")
+        ax.tick_params(axis="both", labelsize=14)
+
+        ax.text(
+            0.05, 0.95,
+            rf"$\langle k \rangle = {np.mean(k):.2f}$",
+            transform=ax.transAxes,
+            fontsize=14,
+            verticalalignment="top",
+            bbox=dict(
+                boxstyle="square,pad=0.45",
+                facecolor="white",
+                alpha=0.9,
+                edgecolor="none"
+            )
+        )
+
+    cbar = fig.colorbar(sc, ax=axs, shrink=0.85)
+    cbar.set_label(degree_label, fontsize=16)
+    cbar.ax.tick_params(labelsize=13)
+
+    plt.show()
+
+def plot_square_PBC_vs_SW_degree(
+    file_PBC_params, file_PBC_adj,
+    file_SW_params, file_SW_adj,
+    parameters_PBC, parameters_SW,
+    degree_type="mean"
+ ):
+
+    datasets = [
+        ("PBC", file_PBC_params, file_PBC_adj, parameters_PBC),
+        ("Sticky walls", file_SW_params, file_SW_adj, parameters_SW)
+    ]
+
+    stored = []
+    all_degrees = []
+
+    for title, file_params, file_adj, params in datasets:
+
+        X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(file_params)
+
+        X = np.asarray(X, dtype=float).reshape(-1)
+        Y = np.asarray(Y, dtype=float).reshape(-1)
+
+        A = np.asarray(load_A(file_adj), dtype=float)
+
+        if A.shape[0] != A.shape[1]:
+            raise ValueError(f"{title}: A no es cuadrada. Tiene forma {A.shape}")
+
+        if len(X) != A.shape[0]:
+            raise ValueError(
+                f"{title}: número de neuronas no coincide. "
+                f"len(X)={len(X)}, len(Y)={len(Y)}, A.shape={A.shape}"
+            )
+
+        k_out = np.asarray(A.sum(axis=1), dtype=float).reshape(-1)
+        k_in = np.asarray(A.sum(axis=0), dtype=float).reshape(-1)
+
+        if degree_type == "out":
+            k = k_out
+            degree_label = "Out-degree"
+        elif degree_type == "in":
+            k = k_in
+            degree_label = "In-degree"
+        elif degree_type == "total":
+            k = k_in + k_out
+            degree_label = "Total degree"
+        elif degree_type == "mean":
+            k = 0.5 * (k_in + k_out)
+            degree_label = "Mean degree"
+        else:
+            raise ValueError("degree_type must be 'out', 'in', 'total' or 'mean'")
+
+        stored.append((title, X, Y, k, params))
+        all_degrees.append(k)
+
+    all_degrees = np.concatenate(all_degrees)
+    vmin, vmax = all_degrees.min(), all_degrees.max()
+
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
+
+    for ax, (title, X, Y, k, params) in zip(axs, stored):
+
+        L = params["L"]
+
+        xmin = ymin = -L / 2
+        xmax = ymax = L / 2
+
+        if k.max() > k.min():
+            sizes = 15 + 90 * (k - vmin) / (vmax - vmin)
+        else:
+            sizes = np.ones(len(k)) * 40.0
+
+        sc = ax.scatter(
+            X, Y,
+            c=k,
+            s=sizes,
+            cmap="viridis",
+            vmin=vmin,
+            vmax=vmax,
+            alpha=0.85,
+            edgecolors="black",
+            linewidths=0.25
+        )
+
+        ax.set_title(title, fontsize=18)
+        ax.set_xlabel("X (mm)", fontsize=16)
+        ax.set_ylabel("Y (mm)", fontsize=16)
+
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal")
+
+        ax.tick_params(axis="both", labelsize=14)
+
+        ax.text(
+            0.05, 0.95,
+            rf"$\langle k \rangle = {np.mean(k):.2f}$",
+            transform=ax.transAxes,
+            fontsize=14,
+            verticalalignment="top",
+            bbox=dict(
+                boxstyle="square,pad=0.45",
+                facecolor="white",
+                alpha=0.9,
+                edgecolor="none"
+            )
+        )
+
+    cbar = fig.colorbar(sc, ax=axs, shrink=0.85)
+    cbar.set_label(degree_label, fontsize=16)
+    cbar.ax.tick_params(labelsize=13)
+
+    plt.show()

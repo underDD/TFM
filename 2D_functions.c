@@ -507,12 +507,18 @@ int make_output_filename(
 
     // Sustituir "adjacency_matrix" por "dynamics"
     char *p = strstr(stem, "adjacency_matrix");
-    if (p) {
+    if (p) {    
         memmove(p + strlen("dynamics"),
                 p + strlen("adjacency_matrix"),
                 strlen(p + strlen("adjacency_matrix")) + 1);
         memcpy(p, "dynamics", strlen("dynamics"));
     }
+
+    // Eliminar sufijo "_simX" si existe
+    char *sim_ptr = strstr(stem, "_sim");
+    if (sim_ptr) {
+        *sim_ptr = '\0';
+        }
 
     // Construir nombre final
     int written = snprintf(

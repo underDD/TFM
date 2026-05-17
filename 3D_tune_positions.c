@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
         N = (int)(rho * L * L * L);
     }
     else if (strcmp(geometry, "cylinder") == 0){
-        R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
+        R = L / sqrt(PI); // Calculate the radius of the circle to maintain the same area as the square
         height = L; // Keep the same height as the side of the square
         N = (int)(rho * PI * R * R * height);
     }

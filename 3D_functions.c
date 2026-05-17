@@ -555,6 +555,12 @@ int make_output_filename(
         memcpy(p, "dynamics", strlen("dynamics"));
     }
 
+    // Eliminar sufijo "_simX" si existe
+    char *sim_ptr = strstr(stem, "_sim");
+    if (sim_ptr) {
+        *sim_ptr = '\0';
+        }
+
     // Construir nombre final
     int written = snprintf(
         out_filename,
