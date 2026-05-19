@@ -1071,8 +1071,6 @@ def build_temporal_neuron_series(filename, time_window=25, SIM_TIME = 5000, N=10
     firings_t = data[:, 0].astype(int)
     firings_i = data[:, 1].astype(int)
 
-
-    neurons_ids = np.arange(1, N+1)  # IDs de neuronas de 1 a N
     times = np.arange(0, SIM_TIME, time_window)
 
     # Quiero pasar de (t,i) a una matriz M de tamaño (len(times), N) donde M[j,n] = 1 si la neurona n ha disparado al menos una vez en el intervalo [times[j], times[j]+time_window)    
@@ -1227,7 +1225,7 @@ def plot_raster_interleaved_inhibitory(
 from numba import njit
 # @njit
 #
-def degree_distribution(A_binary, in_out = "out", normalize = True):
+def degree_distribution(A_binary, in_out = "in", normalize = True):
     if in_out == "out":
         degrees = np.sum(A_binary, axis=1).astype(int)
     elif in_out == "in":
@@ -1707,7 +1705,7 @@ def plot_degree_distribution(k_vals_F, pk_F, k_vals_rw, pk_rw, k_vals_A, pk_A, s
         plt.savefig(savepath, dpi=300, bbox_inches="tight")
 
     plt.show()
-# @njit
+
 def build_F_matrix(filename_dynamics, SIM_TIME=5000, N=1000):
     M, times = build_temporal_neuron_series(
         filename_dynamics,
