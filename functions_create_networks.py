@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.signal import find_peaks, savgol_filter
 import networkx as nx
-from numba import njit
+# from numba import njit
 
 sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
@@ -1777,186 +1777,14 @@ def properties_of_network(A, directed=True):
     return properties
 
 viridis = load_cmap('Viridis', cmap_type='continuous')
-# @njit
-def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, parametersStructure, order=None):
-    
-    X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(filename_neuron_params)
-
-    L = parametersStructure["L"]
-    geometry = parametersStructure["geometry"]
-
-    xmin = ymin = -L/2
-    xmax = ymax = L/2
-
-    
-
-    # n_grid = int(parametersStructure["L"]/parametersStructure["soma_diameter"])
-    
-    cell_size = 0.1 # mm
-    n_grid = int(np.round(L / cell_size))
-
-    R = L / np.sqrt(np.pi)
-
-    if geometry == "circle":
-        xmin = ymin = -R
-        xmax = ymax = R
-
-    H, x_edges, y_edges = np.histogram2d(
-        X, Y,
-        bins=n_grid,
-        range=[[xmin, xmax], [ymin, ymax]]
-    )
-
-    # =====================================================
-    # Máscara geométrica para el cálculo del Gini
-    # =====================================================
-
-    if geometry == "square":
-        H_valid = H.flatten()
-
-    elif geometry == "circle":
-        x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
-        y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
-
-        Xc, Yc = np.meshgrid(x_centers, y_centers, indexing="ij")
-
-        mask_circle = Xc**2 + Yc**2 <= R**2
-
-        H_valid = H[mask_circle]
-
-    else:
-        raise ValueError(f"Unknown geometry: {geometry}")
-
-    # =====================================================
-    # Gini
-    # =====================================================
-
-    bin_sum = H_valid.sum()
-
-    H_flat = np.sort(H_valid.flatten())[::-1]
-
-    G = np.zeros(len(H_flat))
-    sum_gini = 0.0
-
-    for i, h in enumerate(H_flat):
-        sum_gini += h
-        G[i] = sum_gini / bin_sum
-
-    bins = np.arange(1, len(H_flat) + 1)
-    bins = bins / len(H_flat)
-
-    area_between = np.trapezoid(G - bins, bins)
-    Gini = 2 * area_between
-
-    # =====================================================
-    # PLOTS
-    # =====================================================
-
-    fig, axs = plt.subplots(
-        1, 2,
-        figsize=(12, 5),
-        gridspec_kw={"width_ratios": [1, 1], "wspace": 0.3}
-    )
-
-    # =====================================================
-    # Neurons in space
-    # =====================================================
-
-    ax1 = axs[0]
-
-    ax1.set_xlabel('X (mm)', fontsize=18, labelpad=10)
-    ax1.set_ylabel('Y (mm)', fontsize=18, labelpad=10)
-
-    ax1.set_xlim(xmin, xmax)
-    ax1.set_ylim(ymin, ymax)
-    ax1.set_aspect("equal")
-
-    x_grid = np.linspace(xmin, xmax, n_grid + 1)
-    y_grid = np.linspace(ymin, ymax, n_grid + 1)
-
-    for x in x_grid:
-        ax1.axvline(x, color='black', lw=0.3, alpha=0.4)
-
-    for y in y_grid:
-        ax1.axhline(y, color='black', lw=0.3, alpha=0.4)
-
-    H_plot = H.T.copy()
-
-    if geometry == "circle":
-        x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
-        y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
-        Xc, Yc = np.meshgrid(x_centers, y_centers, indexing="xy")
-
-        mask_circle = Xc**2 + Yc**2 <= R**2
-
-        H_plot = np.ma.masked_where(~mask_circle, H_plot)
-
-    ax1.imshow(
-        H_plot,
-        extent=[xmin, xmax, ymin, ymax],
-        origin='lower',
-        aspect='equal',
-        alpha=0.5,
-        cmap='cividis',
-    )
-
-    ax1.scatter(X, Y, s=7, color=viridis(0.05), zorder=3)
-
-    if geometry == "circle":
-        circle = plt.Circle(
-            (0, 0),
-            R,
-            fill=False,
-            color="black",
-            lw=1.5,
-            zorder=4
-        )
-        ax1.add_patch(circle)
-    
-    ax1.text(
-        0.05, 0.95,
-        r"$\Lambda = $" + f"{Gini:.2f}",
-        transform=ax1.transAxes,
-        fontsize=14,
-        verticalalignment='top',
-        bbox=dict(
-            boxstyle="square,pad=0.55",
-            facecolor="white",
-            alpha=0.9,
-            edgecolor="none"
-        ), zorder = 5
-        )
-        
-    ax1.tick_params(axis='both', which='major', labelsize=16)
-
-    # =====================================================
-    # Adjacency matrix
-    # =====================================================
-
-    A = load_A(filename_adj)
-
-    if order is not None:
-        A = A[np.ix_(order, order)]
-
-    ax2 = axs[1]
-
-    ax2.imshow(
-        A,
-        aspect="equal",
-        interpolation="nearest",
-        cmap="binary",
-        vmin=0,
-        vmax=1
-    )
-
-    ax2.set_xlabel('Neuron', fontsize=18)
-    ax2.set_ylabel('Neuron', fontsize=18)
-    ax2.tick_params(axis='both', which='major', labelsize=16)
-
-    plt.tight_layout()
-    plt.show()
-
-def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, parametersStructure, order=None):
+def plot_spatial_distr_AND_adjacency_3D(
+    filename_neuron_params,
+    filename_adj,
+    parametersStructure,
+    order=None,
+    cell_size=0.25,
+    slice_thickness=0.14
+):
     
     X, Y, Z, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params_3D(filename_neuron_params)
 
@@ -1973,10 +1801,27 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
         xmax = ymax = R
 
     # =====================================================
-    # Gini 3D
+    # Funcion auxiliar para calcular Gini
     # =====================================================
 
-    cell_size = 0.1  # mm
+    def compute_gini_from_counts(counts):
+        counts = np.asarray(counts, dtype=float).flatten()
+
+        if counts.sum() == 0:
+            return np.nan
+
+        counts_sorted = np.sort(counts)[::-1]
+
+        cumulative = np.cumsum(counts_sorted) / counts_sorted.sum()
+        bins = np.arange(1, len(counts_sorted) + 1) / len(counts_sorted)
+
+        area_between = np.trapezoid(cumulative - bins, bins)
+        return 2 * area_between
+
+    # =====================================================
+    # Gini 3D volumetrico
+    # =====================================================
+
     n_grid = int(np.round(L / cell_size))
 
     H, edges = np.histogramdd(
@@ -2002,9 +1847,8 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
         H_valid = H[mask_sphere]
 
     elif geometry == "cylinder":
-
         x_centers = 0.5 * (edges[0][:-1] + edges[0][1:])
-        y_centers = 0.5 * (edges[1][:-1] + edges[1][1:])
+        y_centers = 0.5 * (edges[1][:-1] + edges[1:])
         z_centers = 0.5 * (edges[2][:-1] + edges[2][1:])
 
         Xc, Yc, Zc = np.meshgrid(
@@ -2018,22 +1862,79 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
     else:
         raise ValueError(f"Unknown geometry: {geometry}")
 
-    bin_sum = H_valid.sum()
+    Gini_3D = compute_gini_from_counts(H_valid)
 
-    H_flat = np.sort(H_valid.flatten())[::-1]
+    # =====================================================
+    # Gini 2D por capas
+    # =====================================================
 
-    G = np.zeros(len(H_flat))
-    sum_gini = 0.0
+    n_slices = int(np.round(L / slice_thickness))
+    z_edges = np.linspace(zmin, zmax, n_slices + 1)
 
-    for i, h in enumerate(H_flat):
-        sum_gini += h
-        G[i] = sum_gini / bin_sum
+    Gini_slices = []
 
-    bins = np.arange(1, len(H_flat) + 1)
-    bins = bins / len(H_flat)
+    for k in range(n_slices):
 
-    area_between = np.trapezoid(G - bins, bins)
-    Gini = 2 * area_between
+        z0 = z_edges[k]
+        z1 = z_edges[k + 1]
+
+        mask_z = (Z >= z0) & (Z < z1)
+
+        # Incluir el borde superior en la ultima capa
+        if k == n_slices - 1:
+            mask_z = (Z >= z0) & (Z <= z1)
+
+        X_slice = X[mask_z]
+        Y_slice = Y[mask_z]
+
+        if len(X_slice) == 0:
+            continue
+
+        H2D, xedges, yedges = np.histogram2d(
+            X_slice,
+            Y_slice,
+            bins=n_grid,
+            range=[[xmin, xmax], [ymin, ymax]]
+        )
+
+        if geometry == "cube":
+            H2D_valid = H2D.flatten()
+
+        elif geometry == "cylinder":
+            x_centers_2d = 0.5 * (xedges[:-1] + xedges[1:])
+            y_centers_2d = 0.5 * (yedges[:-1] + yedges[1:])
+
+            Xc2, Yc2 = np.meshgrid(
+                x_centers_2d,
+                y_centers_2d,
+                indexing="ij"
+            )
+
+            mask_circle = Xc2**2 + Yc2**2 <= R**2
+            H2D_valid = H2D[mask_circle]
+
+        elif geometry == "sphere":
+            # Para una esfera, el radio valido cambia con z.
+            z_mid = 0.5 * (z0 + z1)
+            R_slice = np.sqrt(max(R**2 - z_mid**2, 0))
+
+            x_centers_2d = 0.5 * (xedges[:-1] + xedges[1:])
+            y_centers_2d = 0.5 * (yedges[:-1] + yedges[1:])
+
+            Xc2, Yc2 = np.meshgrid(
+                x_centers_2d,
+                y_centers_2d,
+                indexing="ij"
+            )
+
+            mask_circle = Xc2**2 + Yc2**2 <= R_slice**2
+            H2D_valid = H2D[mask_circle]
+
+        Gini_slices.append(compute_gini_from_counts(H2D_valid))
+
+    Gini_slices = np.asarray(Gini_slices)
+    Gini_slice_mean = np.nanmean(Gini_slices)
+    Gini_slice_std = np.nanstd(Gini_slices)
 
     # =====================================================
     # PLOTS
@@ -2043,10 +1944,6 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
 
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
-
-    # =====================================================
-    # Neurons in 3D space
-    # =====================================================
 
     ax1.scatter(
         X, Y, Z,
@@ -2062,7 +1959,6 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
 
     if geometry == "cube":
 
-        # Cube edges
         corners = np.array([
             [xmin, ymin, zmin],
             [xmax, ymin, zmin],
@@ -2093,9 +1989,6 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
     elif geometry == "cylinder":
 
         theta = np.linspace(0, 2*np.pi, 100)
-        z_vals = np.linspace(zmin, zmax, 2)
-
-        # Top and bottom circles
         x_circle = R * np.cos(theta)
         y_circle = R * np.sin(theta)
 
@@ -2109,7 +2002,6 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
             color="black", lw=1.0, alpha=0.6
         )
 
-        # Vertical side lines
         for angle in np.linspace(0, 2*np.pi, 12, endpoint=False):
             x_line = R * np.cos(angle)
             y_line = R * np.sin(angle)
@@ -2148,12 +2040,12 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
     ax1.set_zlim(zmin, zmax)
 
     ax1.set_box_aspect([1, 1, 1])
-
     ax1.tick_params(axis='both', which='major', labelsize=12)
 
     ax1.text2D(
         0.05, 0.95,
-        r"$\Lambda = $" + f"{Gini:.2f}",
+        rf"$\Lambda_{{3D}} = {Gini_3D:.2f}$" + "\n" +
+        rf"$\langle \Lambda_{{slice}} \rangle = {Gini_slice_mean:.2f} \pm {Gini_slice_std:.2f}$",
         transform=ax1.transAxes,
         fontsize=14,
         verticalalignment='top',
@@ -2189,6 +2081,420 @@ def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, pa
 
     plt.tight_layout()
     plt.show()
+
+    return Gini_3D, Gini_slice_mean, Gini_slice_std
+# # @njit
+# def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, parametersStructure, order=None):
+    
+#     X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(filename_neuron_params)
+
+#     L = parametersStructure["L"]
+#     geometry = parametersStructure["geometry"]
+
+#     xmin = ymin = -L/2
+#     xmax = ymax = L/2
+
+    
+
+#     # n_grid = int(parametersStructure["L"]/parametersStructure["soma_diameter"])
+    
+#     cell_size = 0.25 # mm
+#     n_grid = int(np.round(L / cell_size))
+
+#     R = L / np.sqrt(np.pi)
+
+#     if geometry == "circle":
+#         xmin = ymin = -R
+#         xmax = ymax = R
+
+#     H, x_edges, y_edges = np.histogram2d(
+#         X, Y,
+#         bins=n_grid,
+#         range=[[xmin, xmax], [ymin, ymax]]
+#     )
+
+#     # =====================================================
+#     # Máscara geométrica para el cálculo del Gini
+#     # =====================================================
+
+#     if geometry == "square":
+#         H_valid = H.flatten()
+
+#     elif geometry == "circle":
+#         x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
+#         y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
+
+#         Xc, Yc = np.meshgrid(x_centers, y_centers, indexing="ij")
+
+#         mask_circle = Xc**2 + Yc**2 <= R**2
+
+#         H_valid = H[mask_circle]
+
+#     else:
+#         raise ValueError(f"Unknown geometry: {geometry}")
+
+#     # =====================================================
+#     # Gini
+#     # =====================================================
+
+#     bin_sum = H_valid.sum()
+
+#     H_flat = np.sort(H_valid.flatten())[::-1]
+
+#     G = np.zeros(len(H_flat))
+#     sum_gini = 0.0
+
+#     for i, h in enumerate(H_flat):
+#         sum_gini += h
+#         G[i] = sum_gini / bin_sum
+
+#     bins = np.arange(1, len(H_flat) + 1)
+#     bins = bins / len(H_flat)
+
+#     area_between = np.trapezoid(G - bins, bins)
+#     Gini = 2 * area_between
+
+#     # =====================================================
+#     # PLOTS
+#     # =====================================================
+
+#     fig, axs = plt.subplots(
+#         1, 2,
+#         figsize=(12, 5),
+#         gridspec_kw={"width_ratios": [1, 1], "wspace": 0.3}
+#     )
+
+#     # =====================================================
+#     # Neurons in space
+#     # =====================================================
+
+#     ax1 = axs[0]
+
+#     ax1.set_xlabel('X (mm)', fontsize=18, labelpad=10)
+#     ax1.set_ylabel('Y (mm)', fontsize=18, labelpad=10)
+
+#     ax1.set_xlim(xmin, xmax)
+#     ax1.set_ylim(ymin, ymax)
+#     ax1.set_aspect("equal")
+
+#     x_grid = np.linspace(xmin, xmax, n_grid + 1)
+#     y_grid = np.linspace(ymin, ymax, n_grid + 1)
+
+#     for x in x_grid:
+#         ax1.axvline(x, color='black', lw=0.3, alpha=0.4)
+
+#     for y in y_grid:
+#         ax1.axhline(y, color='black', lw=0.3, alpha=0.4)
+
+#     H_plot = H.T.copy()
+
+#     if geometry == "circle":
+#         x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
+#         y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
+#         Xc, Yc = np.meshgrid(x_centers, y_centers, indexing="xy")
+
+#         mask_circle = Xc**2 + Yc**2 <= R**2
+
+#         H_plot = np.ma.masked_where(~mask_circle, H_plot)
+
+#     ax1.imshow(
+#         H_plot,
+#         extent=[xmin, xmax, ymin, ymax],
+#         origin='lower',
+#         aspect='equal',
+#         alpha=0.5,
+#         cmap='cividis',
+#     )
+
+#     ax1.scatter(X, Y, s=7, color=viridis(0.05), zorder=3)
+
+#     if geometry == "circle":
+#         circle = plt.Circle(
+#             (0, 0),
+#             R,
+#             fill=False,
+#             color="black",
+#             lw=1.5,
+#             zorder=4
+#         )
+#         ax1.add_patch(circle)
+    
+#     ax1.text(
+#         0.05, 0.95,
+#         r"$\Lambda = $" + f"{Gini:.2f}",
+#         transform=ax1.transAxes,
+#         fontsize=14,
+#         verticalalignment='top',
+#         bbox=dict(
+#             boxstyle="square,pad=0.55",
+#             facecolor="white",
+#             alpha=0.9,
+#             edgecolor="none"
+#         ), zorder = 5
+#         )
+        
+#     ax1.tick_params(axis='both', which='major', labelsize=16)
+
+#     # =====================================================
+#     # Adjacency matrix
+#     # =====================================================
+
+#     A = load_A(filename_adj)
+
+#     if order is not None:
+#         A = A[np.ix_(order, order)]
+
+#     ax2 = axs[1]
+
+#     ax2.imshow(
+#         A,
+#         aspect="equal",
+#         interpolation="nearest",
+#         cmap="binary",
+#         vmin=0,
+#         vmax=1
+#     )
+
+#     ax2.set_xlabel('Neuron', fontsize=18)
+#     ax2.set_ylabel('Neuron', fontsize=18)
+#     ax2.tick_params(axis='both', which='major', labelsize=16)
+
+#     plt.tight_layout()
+#     plt.show()
+
+# def plot_spatial_distr_AND_adjacency_3D(filename_neuron_params, filename_adj, parametersStructure, order=None):
+    
+#     X, Y, Z, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params_3D(filename_neuron_params)
+
+#     L = parametersStructure["L"]
+#     geometry = parametersStructure["geometry"]
+
+#     xmin = ymin = zmin = -L/2
+#     xmax = ymax = zmax = L/2
+
+#     R = L / np.sqrt(np.pi)
+
+#     if geometry == "cylinder":
+#         xmin = ymin = -R
+#         xmax = ymax = R
+
+#     # =====================================================
+#     # Gini 3D
+#     # =====================================================
+
+#     cell_size = 0.25  # mm
+#     n_grid = int(np.round(L / cell_size))
+
+#     H, edges = np.histogramdd(
+#         np.vstack([X, Y, Z]).T,
+#         bins=n_grid,
+#         range=[[xmin, xmax], [ymin, ymax], [zmin, zmax]]
+#     )
+
+#     if geometry == "cube":
+#         H_valid = H.flatten()
+
+#     elif geometry == "sphere":
+#         x_centers = 0.5 * (edges[0][:-1] + edges[0][1:])
+#         y_centers = 0.5 * (edges[1][:-1] + edges[1][1:])
+#         z_centers = 0.5 * (edges[2][:-1] + edges[2][1:])
+
+#         Xc, Yc, Zc = np.meshgrid(
+#             x_centers, y_centers, z_centers,
+#             indexing="ij"
+#         )
+
+#         mask_sphere = Xc**2 + Yc**2 + Zc**2 <= R**2
+#         H_valid = H[mask_sphere]
+
+#     elif geometry == "cylinder":
+
+#         x_centers = 0.5 * (edges[0][:-1] + edges[0][1:])
+#         y_centers = 0.5 * (edges[1][:-1] + edges[1][1:])
+#         z_centers = 0.5 * (edges[2][:-1] + edges[2][1:])
+
+#         Xc, Yc, Zc = np.meshgrid(
+#             x_centers, y_centers, z_centers,
+#             indexing="ij"
+#         )
+
+#         mask_cylinder = Xc**2 + Yc**2 <= R**2
+#         H_valid = H[mask_cylinder]
+
+#     else:
+#         raise ValueError(f"Unknown geometry: {geometry}")
+
+#     bin_sum = H_valid.sum()
+
+#     H_flat = np.sort(H_valid.flatten())[::-1]
+
+#     G = np.zeros(len(H_flat))
+#     sum_gini = 0.0
+
+#     for i, h in enumerate(H_flat):
+#         sum_gini += h
+#         G[i] = sum_gini / bin_sum
+
+#     bins = np.arange(1, len(H_flat) + 1)
+#     bins = bins / len(H_flat)
+
+#     area_between = np.trapezoid(G - bins, bins)
+#     Gini = 2 * area_between
+
+#     # =====================================================
+#     # PLOTS
+#     # =====================================================
+
+#     fig = plt.figure(figsize=(12, 5))
+
+#     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+#     ax2 = fig.add_subplot(1, 2, 2)
+
+#     # =====================================================
+#     # Neurons in 3D space
+#     # =====================================================
+
+#     ax1.scatter(
+#         X, Y, Z,
+#         s=7,
+#         color=viridis(0.05),
+#         alpha=0.8,
+#         depthshade=True
+#     )
+
+#     # =====================================================
+#     # Draw geometry
+#     # =====================================================
+
+#     if geometry == "cube":
+
+#         # Cube edges
+#         corners = np.array([
+#             [xmin, ymin, zmin],
+#             [xmax, ymin, zmin],
+#             [xmax, ymax, zmin],
+#             [xmin, ymax, zmin],
+#             [xmin, ymin, zmax],
+#             [xmax, ymin, zmax],
+#             [xmax, ymax, zmax],
+#             [xmin, ymax, zmax],
+#         ])
+
+#         edges_cube = [
+#             (0, 1), (1, 2), (2, 3), (3, 0),
+#             (4, 5), (5, 6), (6, 7), (7, 4),
+#             (0, 4), (1, 5), (2, 6), (3, 7)
+#         ]
+
+#         for a, b in edges_cube:
+#             ax1.plot(
+#                 [corners[a, 0], corners[b, 0]],
+#                 [corners[a, 1], corners[b, 1]],
+#                 [corners[a, 2], corners[b, 2]],
+#                 color="black",
+#                 lw=0.8,
+#                 alpha=0.5
+#             )
+
+#     elif geometry == "cylinder":
+
+#         theta = np.linspace(0, 2*np.pi, 100)
+#         z_vals = np.linspace(zmin, zmax, 2)
+
+#         # Top and bottom circles
+#         x_circle = R * np.cos(theta)
+#         y_circle = R * np.sin(theta)
+
+#         ax1.plot(
+#             x_circle, y_circle, zmin*np.ones_like(theta),
+#             color="black", lw=1.0, alpha=0.6
+#         )
+
+#         ax1.plot(
+#             x_circle, y_circle, zmax*np.ones_like(theta),
+#             color="black", lw=1.0, alpha=0.6
+#         )
+
+#         # Vertical side lines
+#         for angle in np.linspace(0, 2*np.pi, 12, endpoint=False):
+#             x_line = R * np.cos(angle)
+#             y_line = R * np.sin(angle)
+
+#             ax1.plot(
+#                 [x_line, x_line],
+#                 [y_line, y_line],
+#                 [zmin, zmax],
+#                 color="black",
+#                 lw=0.6,
+#                 alpha=0.35
+#             )
+
+#     elif geometry == "sphere":
+
+#         u = np.linspace(0, 2*np.pi, 40)
+#         v = np.linspace(0, np.pi, 20)
+
+#         xs = R * np.outer(np.cos(u), np.sin(v))
+#         ys = R * np.outer(np.sin(u), np.sin(v))
+#         zs = R * np.outer(np.ones_like(u), np.cos(v))
+
+#         ax1.plot_wireframe(
+#             xs, ys, zs,
+#             color="black",
+#             linewidth=0.4,
+#             alpha=0.25
+#         )
+
+#     ax1.set_xlabel("X (mm)", fontsize=14, labelpad=10)
+#     ax1.set_ylabel("Y (mm)", fontsize=14, labelpad=10)
+#     ax1.set_zlabel("Z (mm)", fontsize=14, labelpad=10)
+
+#     ax1.set_xlim(xmin, xmax)
+#     ax1.set_ylim(ymin, ymax)
+#     ax1.set_zlim(zmin, zmax)
+
+#     ax1.set_box_aspect([1, 1, 1])
+
+#     ax1.tick_params(axis='both', which='major', labelsize=12)
+
+#     ax1.text2D(
+#         0.05, 0.95,
+#         r"$\Lambda = $" + f"{Gini:.2f}",
+#         transform=ax1.transAxes,
+#         fontsize=14,
+#         verticalalignment='top',
+#         bbox=dict(
+#             boxstyle="square,pad=0.55",
+#             facecolor="white",
+#             alpha=0.9,
+#             edgecolor="none"
+#         )
+#     )
+
+#     # =====================================================
+#     # Adjacency matrix
+#     # =====================================================
+
+#     A = load_A(filename_adj)
+
+#     if order is not None:
+#         A = A[np.ix_(order, order)]
+
+#     ax2.imshow(
+#         A,
+#         aspect="equal",
+#         interpolation="nearest",
+#         cmap="binary",
+#         vmin=0,
+#         vmax=1
+#     )
+
+#     ax2.set_xlabel("Neuron", fontsize=18)
+#     ax2.set_ylabel("Neuron", fontsize=18)
+#     ax2.tick_params(axis='both', which='major', labelsize=16)
+
+#     plt.tight_layout()
+#     plt.show()
 
 # @njit
 def compute_spatial_gini(X, Y, L, geometry="square", n_grid=30):
@@ -2577,7 +2883,204 @@ def plot_square_vs_circle_degree(
     cbar.ax.tick_params(labelsize=13)
 
     plt.show()
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
 
+
+def plot_square_vs_circle_degree_smooth(
+    file_square_params, file_square_adj,
+    file_circle_params, file_circle_adj,
+    parameters_square, parameters_circle,
+    degree_type="mean",
+    n_grid=250,
+    smooth_sigma=5.0
+):
+
+    datasets = [
+        ("Square", file_square_params, file_square_adj, parameters_square),
+        ("Circle", file_circle_params, file_circle_adj, parameters_circle)
+    ]
+
+    stored = []
+    all_degrees = []
+
+    for title, file_params, file_adj, params in datasets:
+
+        X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(file_params)
+
+        X = np.asarray(X, dtype=float).reshape(-1)
+        Y = np.asarray(Y, dtype=float).reshape(-1)
+
+        A = np.asarray(load_A(file_adj), dtype=float)
+
+        if A.ndim != 2:
+            raise ValueError(f"{title}: A no es una matriz 2D. Tiene forma {A.shape}")
+
+        if A.shape[0] != A.shape[1]:
+            raise ValueError(f"{title}: A no es cuadrada. Tiene forma {A.shape}")
+
+        if len(X) != A.shape[0]:
+            raise ValueError(
+                f"{title}: número de neuronas no coincide. "
+                f"len(X)={len(X)}, len(Y)={len(Y)}, A.shape={A.shape}"
+            )
+
+        k_out = np.asarray(A.sum(axis=1), dtype=float).reshape(-1)
+        k_in = np.asarray(A.sum(axis=0), dtype=float).reshape(-1)
+
+        if degree_type == "out":
+            k = k_out
+            degree_label = "Out-degree"
+        elif degree_type == "in":
+            k = k_in
+            degree_label = "In-degree"
+        elif degree_type == "total":
+            k = k_in + k_out
+            degree_label = "Total degree"
+        elif degree_type == "mean":
+            k = 0.5 * (k_in + k_out)
+            degree_label = "Mean degree"
+        else:
+            raise ValueError("degree_type must be 'out', 'in', 'total' or 'mean'")
+
+        stored.append((title, X, Y, k, params))
+        all_degrees.append(k)
+
+    all_degrees = np.concatenate(all_degrees)
+    vmin, vmax = np.nanmin(all_degrees), np.nanmax(all_degrees)
+
+    fig, axs = plt.subplots(
+        1, 2,
+        figsize=(12, 5),
+        constrained_layout=True
+    )
+
+    im = None
+
+    for ax, (title, X, Y, k, params) in zip(axs, stored):
+
+        L = params["L"]
+        geometry = params["geometry"]
+
+        if geometry == "circle":
+            R = L / np.sqrt(np.pi)
+            xmin = ymin = -R
+            xmax = ymax = R
+        else:
+            R = None
+            xmin = ymin = -L / 2
+            xmax = ymax = L / 2
+
+        # =========================
+        # HISTOGRAMA ESPACIAL
+        # =========================
+
+        H_count, xedges, yedges = np.histogram2d(
+            X, Y,
+            bins=n_grid,
+            range=[[xmin, xmax], [ymin, ymax]]
+        )
+
+        H_degree, _, _ = np.histogram2d(
+            X, Y,
+            bins=[xedges, yedges],
+            weights=k
+        )
+
+        # =========================
+        # SUAVIZADO GAUSSIANO
+        # =========================
+
+        H_count_smooth = gaussian_filter(
+            H_count,
+            sigma=smooth_sigma,
+            mode="constant",
+            cval=0.0
+        )
+
+        H_degree_smooth = gaussian_filter(
+            H_degree,
+            sigma=smooth_sigma,
+            mode="constant",
+            cval=0.0
+        )
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            Z = H_degree_smooth / H_count_smooth
+
+        Z[H_count_smooth < 1e-8] = np.nan
+
+        # Transponer para que encaje con imshow
+        Z = Z.T
+
+        # =========================
+        # MÁSCARA CIRCULAR
+        # =========================
+
+        if geometry == "circle":
+            xc = 0.5 * (xedges[:-1] + xedges[1:])
+            yc = 0.5 * (yedges[:-1] + yedges[1:])
+            XX, YY = np.meshgrid(xc, yc)
+
+            mask_outside = XX**2 + YY**2 > R**2
+            Z[mask_outside] = np.nan
+
+        # =========================
+        # PLOT
+        # =========================
+        vmin = np.nanpercentile(Z, 2)
+        vmax = np.nanpercentile(Z, 98)
+        im = ax.imshow(
+            Z,
+            extent=[xmin, xmax, ymin, ymax],
+            origin="lower",
+            cmap="viridis",
+            vmin=vmin,
+            vmax=vmax,
+            aspect="equal",
+            interpolation="bilinear"
+        )
+
+        if geometry == "circle":
+            circle = plt.Circle(
+                (0, 0),
+                R,
+                fill=False,
+                color="black",
+                lw=1.5
+            )
+            ax.add_patch(circle)
+
+        ax.set_title(title, fontsize=18)
+        ax.set_xlabel("X (mm)", fontsize=16)
+        ax.set_ylabel("Y (mm)", fontsize=16)
+
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal")
+
+        ax.tick_params(axis="both", labelsize=14)
+
+        ax.text(
+            0.05, 0.95,
+            rf"$\langle k \rangle = {np.mean(k):.2f}$",
+            transform=ax.transAxes,
+            fontsize=14,
+            verticalalignment="top",
+            bbox=dict(
+                boxstyle="square,pad=0.45",
+                facecolor="white",
+                alpha=0.9,
+                edgecolor="none"
+            )
+        )
+
+    cbar = fig.colorbar(im, ax=axs, shrink=0.85)
+    cbar.set_label(degree_label, fontsize=16)
+    cbar.ax.tick_params(labelsize=13)
+
+    plt.show()
 def plot_square_PBC_vs_SW_degree(
     file_PBC_params, file_PBC_adj,
     file_SW_params, file_SW_adj,
