@@ -364,12 +364,12 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
             }
         }
 
-        // if (axon_simulation != NULL){
-        //     fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\n",
-        //             neuron_idx, segment_idx, subsegment_idx,
-        //             x, y, z,
-        //             x_next, y_next, z_next);
-        // }
+        if (axon_simulation != NULL){
+            fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\n",
+                    neuron_idx, segment_idx, subsegment_idx,
+                    x, y, z,
+                    x_next, y_next, z_next);
+        }
 
         subsegment_idx++;
 
@@ -940,4 +940,18 @@ int sticky_cylinder3D(double initial_x, double initial_y, double initial_z,
     *dz = z - initial_z;
 
     return stop_axon;
+}
+
+double reflect_polar_angle(double angle_pol) {
+    angle_pol = fmod(angle_pol, 2.0 * PI);
+
+    if (angle_pol < 0.0) {
+        angle_pol += 2.0 * PI;
+    }
+
+    if (angle_pol > PI) {
+        angle_pol = 2.0 * PI - angle_pol;
+    }
+
+    return angle_pol;
 }

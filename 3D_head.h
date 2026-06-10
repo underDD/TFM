@@ -100,4 +100,6 @@ int sticky_cylinder3D(double initial_x, double initial_y, double initial_z,
                       int *trials, int *links,
                       FILE *axon_simulation,
                       int neuron_idx, int segment_idx);
+
+double reflect_polar_angle(double angle_pol);
 //************************************

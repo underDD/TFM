@@ -47,14 +47,16 @@ int main(int argc, char *argv[]) {
     strcpy(geometry, argv[14]);
     
 
-    if (strcmp(geometry, "cube") == 0){
+    if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0 || strcmp(geometry, "cubeLongRange") == 0){
         N = (int)(rho * L * L * L);
     }
     else if (strcmp(geometry, "cylinder") == 0){
         R = L / sqrt(PI); // Calculate the radius of the circle to maintain the same area as the square
         height = L; // Keep the same height as the side of the square
-        N = (int)(rho * PI * R * R * height);
+        N = (long)(rho * PI * R * R * height);
     }
+
+    // printf("N = %d\n", N);
 
     // N = (int)(rho * L * L * L);
     sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
@@ -101,7 +103,7 @@ int main(int argc, char *argv[]) {
         bool overlap;
         for(int i = 0; i < N; i++){
             do{
-                if (strcmp(geometry, "cube") == 0){
+                if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0 || strcmp(geometry, "cubeLongRange") == 0){
                     X[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                     Y[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                     Z[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
@@ -209,7 +211,7 @@ int main(int argc, char *argv[]) {
             }
             else{
 
-                if (strcmp(geometry, "cube") == 0){
+                if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0 || strcmp(geometry, "cubeLongRange") == 0){
 
                     double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
                     mean_x = randomInPR(-L/2.0 + margin, L/2.0 - margin);
@@ -243,7 +245,7 @@ int main(int argc, char *argv[]) {
                     }
                     else{
 
-                        if (strcmp(geometry, "cube") == 0){
+                        if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0){
                             double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
                             do{
                                 X[idx] = mean_x + sigma_x * box_muller();

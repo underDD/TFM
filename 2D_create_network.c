@@ -2,15 +2,13 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 14){
-        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_axon_angle n_centers base_sigma BC_type geometry\n", argv[0]);
+    if (argc < 15){
+        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_axon_angle n_centers base_sigma BC_type geometry seed\n", argv[0]);
         return 1;
     }
     
-    ini_ran(time(NULL));
     
     double *X, *Y;
-    
     double L, rho; int N_neurons;
     double soma_diameter;
     double d_mean, d_sigma;
@@ -18,25 +16,26 @@ int main(int argc, char *argv[]) {
     double segment_length, sigma_axon_angle;
     int n_centers;
     double base_sigma;
-    double alpha;
+    // double alpha;
     double R;
-
+    int seed;
+    
     double *somas;
     double *dendrites_diameters;
     double *axon_lengths;
-
+    
     char filename[MAX_STRING_LENGTH];
     char filename_simulation[MAX_STRING_LENGTH];
     char BC_type[MAX_STRING_LENGTH];
     char geometry[MAX_STRING_LENGTH];
-
+    
     // strcpy(BC_type, "PBC"); // Boundary conditions type (PBC: Periodic Boundary Conditions, RBC: Reflective Boundary Conditions)
-
+    
     FILE *axon_simulation;
     FILE *neurons_params;
     
-// !! FILENAME TO LOAD NEURON CONFIGURATION
-
+    // !! FILENAME TO LOAD NEURON CONFIGURATION
+    
     strcpy(filename, argv[1]);
     L = atof(argv[2]); // Could be the length of the square or the diameter of the circle
     rho = atof(argv[3]);
@@ -50,6 +49,14 @@ int main(int argc, char *argv[]) {
     base_sigma = atof(argv[11]);
     strcpy(BC_type, argv[12]);
     strcpy(geometry, argv[13]);
+    seed = atoi(argv[14]);
+    if (seed == 0){
+        seed = time(NULL);
+    }
+    ini_ran(seed);
+
+    sigma_rayleigh = l_mean*sqrt(2/PI); // Mean of axon length distribution (Rayleigh)
+    l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigm
     
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -58,7 +65,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    if (strcmp(geometry, "square") == 0){
+    if (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0){
         N_neurons = (int)(rho * L * L);
     }
     else if (strcmp(geometry, "circle") == 0){
@@ -94,7 +101,11 @@ int main(int argc, char *argv[]) {
     axon_lengths = (double *)malloc(N_neurons * sizeof(double));
 
     for(int i = 0; i < N_neurons; i++){
-        fscanf(neurons_params, "%lf\t%lf\t%lf\t%lf\t%lf\n", &X[i], &Y[i], &somas[i], &dendrites_diameters[i], &axon_lengths[i]);
+        fscanf(neurons_params, "%lf\t%lf\t%lf\t%lf\n", &X[i], &Y[i], &somas[i], &dendrites_diameters[i]);
+    }
+
+    for(int i = 0; i < N_neurons; i++){
+        axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
     }
 
     fclose(neurons_params);
@@ -111,10 +122,10 @@ int main(int argc, char *argv[]) {
         sprintf(filename_simulation, "2D_axon_simulation/2D_axon_positions_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
-    // if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
-    //     printf("Error opening file %s\n", filename_simulation);
-    //     exit(1);
-    // }
+    if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
+        printf("Error opening file %s\n", filename_simulation);
+        exit(1);
+    }
 
     if (strcmp(BC_type, "PBC") == 0){
         fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tEnd_X\tEnd_Y\n");
@@ -148,15 +159,36 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < N_neurons; i++){
         // printf("Creating connections for neuron %d/%d\r", i+1, N_neurons);
+
+        // ini_ran(seed + i*1000);  // semilla fija por neurona
+
         fflush(stdout);
         double initial_segment_vector_x, initial_segment_vector_y;
-        double initial_angle = randomInPR(0.0, 2*PI); // Initial angle of the axon (randomly distributed between 0 and 2*pi)
+        double initial_angle; // Initial angle of the axon (randomly distributed between 0 and 2*pi)
         double xmin, xmax, ymin, ymax;
-        if (strcmp(geometry, "square") == 0){
+        if (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0){
             xmin = -L/2.0;
             xmax = L/2.0;
             ymin = -L/2.0;
             ymax = L/2.0;
+        }
+
+        double left_band_width = 0.6; // Width of the left band for long-range axons (in mm)
+        int long_range_axon = 0;
+
+        if (strcmp(geometry, "squareLongRange") == 0) { // Selects the neurons of the left side
+            if (X[i] < xmin + left_band_width) {
+                    long_range_axon = 1;
+            }
+        }
+
+        double long_range_angle = 0.0;
+
+        if (long_range_axon) {
+            initial_angle = 0.0; // the initial angle for long-range axons is set to 0 (pointing to the right)
+        }
+        else {
+            initial_angle = randomInPR(0.0, 2*PI);
         }
         
         initial_segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle);
@@ -166,7 +198,7 @@ int main(int argc, char *argv[]) {
             PBC(&initial_segment_vector_x, L);
             PBC(&initial_segment_vector_y, L);
         }
-        else if (strcmp(BC_type, "SW") == 0 && strcmp(geometry, "square") == 0){
+        else if (strcmp(BC_type, "SW") == 0 && (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0)){
             if (initial_segment_vector_x < xmin) initial_segment_vector_x = xmin;
             if (initial_segment_vector_x > xmax) initial_segment_vector_x = xmax;
             if (initial_segment_vector_y < ymin) initial_segment_vector_y = ymin;
@@ -188,11 +220,15 @@ int main(int argc, char *argv[]) {
             double angle; 
             double end_segment_vector_x, end_segment_vector_y;
 
-            if (k ==0){
+            if (long_range_axon) {
+                angle = 0.0; // The angle of each segment of long-range axons is set to 0 (pointing to the right)
+
+            }
+            else if (k == 0){
                 angle = initial_angle;
             }
             else{
-                angle = initial_angle + sigma_axon_angle * box_muller(); // New angle of the axon segment (Gaussian deviation from the initial angle)
+                angle = initial_angle + sigma_axon_angle * box_muller();
             }
 
             new_vector_segment(segment_length, angle, &dx, &dy); // Calculate the vector of the new segment based on the angle and segment length
@@ -217,14 +253,18 @@ int main(int argc, char *argv[]) {
                 PBC(&end_segment_vector_x, L);
                 PBC(&end_segment_vector_y, L);
             }
-            else if (strcmp(BC_type, "SW") == 0 && strcmp(geometry, "square") == 0){
+            else if (strcmp(BC_type, "SW") == 0 && (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0)){
                 sticky_walls2D(initial_segment_vector_x, initial_segment_vector_y, &dx, &dy,
                              L, &end_segment_vector_x, &end_segment_vector_y, X, Y,
                              dendrites_diameters, i, N_neurons, AdjMatrix_flat,
                              &trials, &links, axon_simulation, i, k);
-                
+                if (long_range_axon && end_segment_vector_x >= xmax - 1e-12) {
+                    initial_segment_vector_x = end_segment_vector_x;
+                    initial_segment_vector_y = end_segment_vector_y;
+                    break;
+                }
                 // To keep the angular persistence even after hitting the wall, we update the initial angle based on the new segment vector after sticky walls
-                if (dx*dx + dy*dy > 1e-15){
+                if (!long_range_axon && dx*dx + dy*dy > 1e-15){
                     initial_angle = atan2(dy, dx);
                 }
             }
@@ -247,7 +287,7 @@ int main(int argc, char *argv[]) {
 
     printf("\n");
 
-    // fclose(axon_simulation);
+    fclose(axon_simulation);
 
     printf("\nTrials (intersections) = %d\n", trials);
     printf("Links created          = %d\n", links);

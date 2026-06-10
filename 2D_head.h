@@ -103,4 +103,17 @@ void sticky_circle2D(double initial_segment_vector_x, double initial_segment_vec
                      int *trials, int *links,
                      FILE *axon_simulation,
                      int neuron_idx, int segment_idx);
+
+void save_adjacency_snapshot(
+    uint8_t *AdjMatrix_flat,
+    int N_neurons,
+    double l_current,
+    char *geometry,
+    char *BC_type,
+    double L,
+    double rho,
+    double d_mean,
+    int n_centers,
+    double base_sigma
+);
 //************************************

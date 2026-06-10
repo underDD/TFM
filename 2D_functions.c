@@ -231,7 +231,15 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
     double x = initial_segment_vector_x;
     double y = initial_segment_vector_y;
     double total_len = sqrt(*dx*(*dx) + *dy*(*dy));
-    
+
+    if (total_len < eps){
+        *end_segment_vector_x = initial_segment_vector_x;
+        *end_segment_vector_y = initial_segment_vector_y;
+        *dx = 0.0;
+        *dy = 0.0;
+        return;
+    }
+
     // Normalized lenghts
     double ux = *dx / total_len; // The new position is x_new = x_old + ux * step_len, where step_len is how much we can grow until hitting a wall or exhausting the remaining length
     double uy = *dy / total_len; // y_new = y_old + uy * step_len
@@ -281,19 +289,30 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
         if(s_hit > remaining){ // Case that the wall is far
             step_len = remaining;
         }
-        else if(s_hit < eps){ // It is in the wall practicamente 
+        else if(s_hit < eps){
+
+            double tangent_eps = 1e-3;
+
             if (wall_type == 1){
+                if (fabs(uy) < tangent_eps){
+                    remaining = 0.0;
+                    break;
+                }
+
                 ux = 0.0;
-                if (uy > eps) uy = 1.0;
-                else if (uy < -eps) uy = -1.0;
-                else break;
+                uy = (uy > 0.0) ? 1.0 : -1.0;
             }
+
             else if (wall_type == 2){
+                if (fabs(ux) < tangent_eps){
+                    remaining = 0.0;
+                    break;
+                }
+
                 uy = 0.0;
-                if (ux > eps) ux = 1.0;
-                else if (ux < -eps) ux = -1.0;
-                else break;
+                ux = (ux > 0.0) ? 1.0 : -1.0;
             }
+
             continue;
         }
         else{ // It hits the wall in this step
@@ -330,12 +349,12 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
             }
         }
 
-        // if (axon_simulation != NULL){
-        //     fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
-        //             neuron_idx, segment_idx, subsegment_idx,
-        //             x, y,
-        //             x_next, y_next);
-        // }
+        if (axon_simulation != NULL){
+            fprintf(axon_simulation, "%d\t%d\t%d\t%f\t%f\t%f\t%f\n",
+                    neuron_idx, segment_idx, subsegment_idx,
+                    x, y,
+                    x_next, y_next);
+        }
 
         subsegment_idx++;
 
@@ -345,15 +364,31 @@ void sticky_walls2D(double initial_segment_vector_x, double initial_segment_vect
 
         // If we just hit the wall, we need to reorient the growth vector to be parallel to the wall for the remaining length
         if (remaining > eps && s_hit != DBL_MAX && step_len == s_hit){
-            if (wall_type == 1){
+
+            double tangent_eps = 1e-3;
+
+            if (wall_type == 1){ 
+                // Ha golpeado una pared vertical: izquierda o derecha.
+                // Para seguir por la pared necesita componente tangencial en Y.
+                if (fabs(uy) < tangent_eps){
+                    remaining = 0.0;
+                    break;
+                }
+
                 ux = 0.0;
-                if (uy > eps) uy = 1.0;
-                else if (uy < -eps) uy = -1.0;
+                uy = (uy > 0.0) ? 1.0 : -1.0;
             }
+
             else if (wall_type == 2){
+                // Ha golpeado una pared horizontal: arriba o abajo.
+                // Para seguir por la pared necesita componente tangencial en X.
+                if (fabs(ux) < tangent_eps){
+                    remaining = 0.0;
+                    break;
+                }
+
                 uy = 0.0;
-                if (ux > eps) ux = 1.0;
-                else if (ux < -eps) ux = -1.0;
+                ux = (ux > 0.0) ? 1.0 : -1.0;
             }
         }
 
@@ -1007,4 +1042,47 @@ void sticky_circle2D(double initial_segment_vector_x, double initial_segment_vec
     */
     *dx = ux * total_len;
     *dy = uy * total_len;
+}
+
+void save_adjacency_snapshot(
+    uint8_t *AdjMatrix_flat,
+    int N_neurons,
+    double l_current,
+    char *geometry,
+    char *BC_type,
+    double L,
+    double rho,
+    double d_mean,
+    int n_centers,
+    double base_sigma
+){
+    char filename[MAX_STRING_LENGTH];
+
+    if (n_centers == 0){
+        sprintf(filename,
+            "2D_created_networks/2D_adjacency_matrix_%s_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt",
+            geometry, BC_type, L, rho, l_current, d_mean
+        );
+    }
+    else{
+        sprintf(filename,
+            "2D_created_networks/2D_adjacency_matrix_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt",
+            geometry, BC_type, n_centers, base_sigma, L, rho, l_current, d_mean
+        );
+    }
+
+    FILE *f = fopen(filename, "w");
+    if (f == NULL){
+        printf("Error opening file %s\n", filename);
+        exit(1);
+    }
+
+    for(int i = 0; i < N_neurons; i++){
+        for(int j = 0; j < N_neurons; j++){
+            fprintf(f, "%d ", AdjMatrix_flat[i*N_neurons + j]);
+        }
+        fprintf(f, "\n");
+    }
+
+    fclose(f);
 }

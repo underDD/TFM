@@ -2,16 +2,16 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 15) {
-        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi n_centers base_sigma BC_type geometry\n", argv[0]);
+    if (argc < 16) {
+        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi n_centers base_sigma BC_type geometry seed\n", argv[0]);
         return 1;
     }
 
-    ini_ran(time(NULL));
+    // ini_ran(seed);
 
     double *X, *Y, *Z;
 
-    double L, rho; int N;
+    double L, rho; long N;
     double soma_diameter;
     double d_mean, d_sigma;
     double l_mean, l_sigma, sigma_rayleigh;
@@ -52,6 +52,14 @@ int main(int argc, char *argv[]) {
     base_sigma = atof(argv[12]);
     strcpy(BC_type, argv[13]);
     strcpy(geometry, argv[14]);
+    int seed = atoi(argv[15]);
+
+    if (seed!= 0){
+        ini_ran(seed);
+    }
+    else{
+        ini_ran((int)time(NULL));
+    }
 
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
@@ -60,13 +68,13 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     
-    if (strcmp(geometry, "cube") == 0){
-        N = (int)(rho * L * L * L);
+    if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0 || strcmp(geometry, "cubeLongRange") == 0){
+        N = (long)(rho * L * L * L);
     }
     else if (strcmp(geometry, "cylinder") == 0){
         R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
         height = L; // Keep the same height as the side of the square
-        N = (int)(rho * PI * R * R * height);
+        N = (long)(rho * PI * R * R * height);
     }
 
     printf("Parameters loaded from file: %s\n", filename);
@@ -115,10 +123,10 @@ int main(int argc, char *argv[]) {
         sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
     }
 
-    // if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
-    //     printf("Error opening file %s\n", filename_simulation);
-    //     exit(1);
-    // }
+    if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
+        printf("Error opening file %s\n", filename_simulation);
+        exit(1);
+    }
 
     if (strcmp(BC_type, "PBC") == 0){
         fprintf(axon_simulation, "Neuron_Index\tSegment_Index\tStart_X\tStart_Y\tStart_Z\tEnd_X\tEnd_Y\tEnd_Z\n");
@@ -152,14 +160,76 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < N; i++){
         // printf("Creating connections for neuron %d/%d\r", i+1, N);
-        fflush(stdout);
-        double initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z;
-        double initial_angle_azi = randomInPR(0.0, 2.0*PI);
-        double initial_angle_pol = acos(randomInPR(-1.0, 1.0)); // Polar angle between 0 and pi
-
+        
+        if (seed!= 0){
+            ini_ran(seed + i*1000); // Re-seed the random number generator for each neuron to ensure different growth patterns
+        }
+        
         double xmin = -L/2.0, xmax = L/2.0;
         double ymin = -L/2.0, ymax = L/2.0;
         double zmin = -L/2.0, zmax = L/2.0;
+
+        fflush(stdout);
+        double initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z;
+        double initial_angle_azi = randomInPR(0.0, 2.0*PI);
+        double initial_angle_pol;
+        double sigma_pol_init_biased = 0.01;
+        double p_vertical_axons = 0.5;  // 10% pueden crecer más en Z, el resto crece más en el plano XY
+        int vertical_axon = 0;
+
+        if (strcmp(geometry, "cubeBiased") == 0){
+            if (randomInPR(0.0, 1.0) < p_vertical_axons){
+                vertical_axon = 1;
+            }
+        }
+
+        if (strcmp(geometry, "cubeBiased") == 0){
+            if (vertical_axon){
+                initial_angle_pol = acos(randomInPR(-1.0, 1.0));
+            }
+            else{
+                initial_angle_pol = PI / 2.0 + box_muller() * sigma_pol_init_biased;
+            }
+        }
+        else{
+            initial_angle_pol = acos(randomInPR(-1.0, 1.0));
+        }
+
+        double left_band_width = 0.30;   // grosor del lateral izquierdo
+        double p_long_range = 0.30;      // fracción de neuronas del lateral que lanzan axón largo
+        int long_range_axon = 0;
+
+        if (strcmp(geometry, "cubeLongRange") == 0) {
+
+            if (X[i] < xmin + left_band_width) {
+                if (randomInPR(0.0, 1.0) < p_long_range) {
+                    long_range_axon = 1;
+                }
+            }
+        }
+
+        if (long_range_axon) {
+            initial_angle_azi = 0.0;       // dirección +X
+            initial_angle_pol = PI / 2.0;  // plano XY
+        }
+        else {
+            initial_angle_azi = randomInPR(0.0, 2.0*PI);
+
+            if (strcmp(geometry, "cubeBiased") == 0) {
+
+                if (vertical_axon) {
+                    initial_angle_pol = acos(randomInPR(-1.0, 1.0));
+                }
+                else {
+                    initial_angle_pol = PI / 2.0 + box_muller() * sigma_pol_init_biased;
+                }
+            }
+            else {
+                initial_angle_pol = acos(randomInPR(-1.0, 1.0));
+            }
+        }
+
+
 
         initial_segment_vector_x = X[i] + (soma_diameter/2.0) * cos(initial_angle_azi) * sin(initial_angle_pol);
         initial_segment_vector_y = Y[i] + (soma_diameter/2.0) * sin(initial_angle_azi) * sin(initial_angle_pol);
@@ -187,14 +257,33 @@ int main(int argc, char *argv[]) {
             double angle_pol, angle_azi;
             double end_segment_vector_x, end_segment_vector_y, end_segment_vector_z;
 
-            if (k == 0){
+            if (long_range_axon) {
+                angle_azi = 0.0;
+                angle_pol = PI / 2.0;
+            }
+            else if (k == 0) {
                 angle_azi = initial_angle_azi;
                 angle_pol = initial_angle_pol;
             }
             else{
                 angle_azi = initial_angle_azi + box_muller() * sigma_azi; // Standard deviation of sigma_azi radians
-                angle_pol = initial_angle_pol + box_muller() * sigma_pol; // Standard deviation of sigma_pol radians
+                if (strcmp(geometry, "cubeBiased") == 0){
 
+                    if (vertical_axon){
+                        angle_pol = initial_angle_pol + box_muller() * sigma_pol;
+                    }
+                    else{
+                        double sigma_pol_biased = 0.01;
+                        double lambda_plane = 0.5;
+
+                        angle_pol = initial_angle_pol
+                                + box_muller() * sigma_pol_biased
+                                - lambda_plane * (initial_angle_pol - PI / 2.0);
+                    }
+                }
+                else{
+                    angle_pol = initial_angle_pol + box_muller() * sigma_pol;
+                }
                 angle_pol = fmod(angle_pol, 2.0*PI);
                 if (angle_pol < 0.0) angle_pol += 2.0*PI;
                 if (angle_pol > PI) angle_pol = 2.0*PI - angle_pol; // Keep polar angle between 0 and pi
@@ -229,7 +318,10 @@ int main(int argc, char *argv[]) {
                 PBC(&end_segment_vector_y, L);
                 PBC(&end_segment_vector_z, L);
             }
-            else if ((strcmp(geometry, "cube") == 0)  && strcmp(BC_type, "SW") == 0){
+            else if ((strcmp(geometry, "cube") == 0 ||
+                    strcmp(geometry, "cubeBiased") == 0 ||
+                    strcmp(geometry, "cubeLongRange") == 0)
+                    && strcmp(BC_type, "SW") == 0){
                 sticky_walls3D(initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z, 
                                 &dx, &dy, &dz, L, &end_segment_vector_x, &end_segment_vector_y, &end_segment_vector_z, X, Y, Z, 
                                 dendrites_diameters, i, N, AdjMatrix_flat, &trials, &links, axon_simulation, i, k);

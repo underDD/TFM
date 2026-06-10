@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     strcpy(BC_type, argv[12]);
     strcpy(geometry, argv[13]);
 
-    if (strcmp(geometry, "square") == 0){
+    if (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0){
         N_neurons = (int)(rho * L * L);
     }
     else if (strcmp(geometry, "circle") == 0){
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 
     somas = (double *)malloc(N_neurons * sizeof(double));
     dendrites_diameters = (double *)malloc(N_neurons * sizeof(double));
-    axon_lengths = (double *)malloc(N_neurons * sizeof(double));
+    // axon_lengths = (double *)malloc(N_neurons * sizeof(double));
 
     
     if (agg == 0){
@@ -92,13 +92,13 @@ int main(int argc, char *argv[]) {
         printf("Geometry = %s\n", geometry);
         printf("Output file: %s\n", filename);  
         
-        fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
+        fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\n");
         
         bool overlap;
         for(int i = 0; i < N_neurons; i++){ // Only to place the neurons in the plane, without making links yet
             do{
                 
-                if (strcmp(geometry, "square") == 0){
+                if (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0){
                     double margin = soma_diameter/2.0; // Margin to avoid placing neurons too close to the borders when using non-periodic BC
                     X[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                     Y[i] = randomInPR(-L/2.0 + margin, L/2.0 - margin);
@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
                 dendrites_diameters[i] = d_mean + d_sigma * box_muller();
             } while (dendrites_diameters[i] <= 0.0);
             
-            axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
-            fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i], axon_lengths[i]);
+            // axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
+            fprintf(neurons_params, "%f\t%f\t%f\t%f\n", X[i], Y[i], soma_diameter, dendrites_diameters[i]);
             // printf("Placed neuron %d/%d\r", i+1, N_neurons);
             fflush(stdout);
         }
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
         printf("Geometry = %s\n", geometry);
         printf("Output file: %s\n", filename);
 
-        fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
+        fprintf(neurons_params, "X\tY\tSoma_Diameter\tDendrite_Diameter\n");
         
         int idx = 0;
 
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
             }
             else{
 
-                if (strcmp(geometry, "square") == 0){
+                if (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0){
                     double margin = soma_diameter/2.0; // Margin to avoid placing centers too close to the borders when using non-periodic BC            
                     mean_x = randomInPR(-L/2.0 + margin, L/2.0 - margin);
                     mean_y = randomInPR(-L/2.0 + margin, L/2.0 - margin);
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
                     }
                     else{
                         double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
-                        if (strcmp(geometry, "square") == 0){
+                        if (strcmp(geometry, "square") == 0 || strcmp(geometry, "squareLongRange") == 0){
                             do {
                                 X[idx] = mean_x + sigma_x * box_muller();
                                 Y[idx] = mean_y + sigma_y * box_muller();
@@ -274,9 +274,9 @@ int main(int argc, char *argv[]) {
                     dendrites_diameters[idx] = d_mean + d_sigma * box_muller(); 
                 }while (dendrites_diameters[idx] <= 0.0);
                 
-                axon_lengths[idx] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
+                // axon_lengths[idx] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
                 
-                fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[idx], Y[idx], somas[idx], dendrites_diameters[idx], axon_lengths[idx]);
+                fprintf(neurons_params, "%f\t%f\t%f\t%f\n", X[idx], Y[idx], somas[idx], dendrites_diameters[idx]);
                 // printf("Placed neuron %d/%d\r", idx + 1, N_neurons);
                 fflush(stdout);
                 idx++;
