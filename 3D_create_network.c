@@ -2,8 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 16) {
-        printf("Usage: %s filename L rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi n_centers base_sigma BC_type geometry seed\n", argv[0]);
+    if (argc < 17) {
+        printf("Usage: %s filename L h rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi n_centers base_sigma BC_type geometry seed\n", argv[0]);
         return 1;
     }
 
@@ -40,19 +40,20 @@ int main(int argc, char *argv[]) {
     // sprintf(filename, "3D_initial_configurations/3D_neurons_params_random_L2.0_rho125_l1.00.txt");
     strcpy(filename, argv[1]);
     L = atof(argv[2]);
-    rho = atof(argv[3]);
-    soma_diameter = atof(argv[4]);
-    d_mean = atof(argv[5]);
-    d_sigma = atof(argv[6]);
-    l_mean = atof(argv[7]);
-    segment_length = atof(argv[8]);
-    sigma_pol = atof(argv[9]);
-    sigma_azi = atof(argv[10]);
-    n_centers = atoi(argv[11]);
-    base_sigma = atof(argv[12]);
-    strcpy(BC_type, argv[13]);
-    strcpy(geometry, argv[14]);
-    int seed = atoi(argv[15]);
+    height = atof(argv[3]);
+    rho = atof(argv[4]);
+    soma_diameter = atof(argv[5]);
+    d_mean = atof(argv[6]);
+    d_sigma = atof(argv[7]);
+    l_mean = atof(argv[8]);
+    segment_length = atof(argv[9]);
+    sigma_pol = atof(argv[10]);
+    sigma_azi = atof(argv[11]);
+    n_centers = atoi(argv[12]);
+    base_sigma = atof(argv[13]);
+    strcpy(BC_type, argv[14]);
+    strcpy(geometry, argv[15]);
+    int seed = atoi(argv[16]);
 
     if (seed!= 0){
         ini_ran(seed);
@@ -69,16 +70,16 @@ int main(int argc, char *argv[]) {
     }
     
     if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0 || strcmp(geometry, "cubeLongRange") == 0){
-        N = (long)(rho * L * L * L);
+        N = (long)(rho * L * L * height);
     }
     else if (strcmp(geometry, "cylinder") == 0){
-        R = L / 2; // Calculate the radius of the circle to maintain the same area as the square
-        height = L; // Keep the same height as the side of the square
+        R = L / sqrt(PI); // Calculate the radius of the circle to maintain the same area as the square
         N = (long)(rho * PI * R * R * height);
     }
 
     printf("Parameters loaded from file: %s\n", filename);
     printf("L = %.1lf\n", L);
+    printf("height = %.2lf\n", height);
     printf("rho = %.0f --> N = %d\n", rho, N);
     printf("soma_diameter = %.3lf\n", soma_diameter);
     printf("d_mean = %.3lf\n", d_mean);
@@ -117,10 +118,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE POSITIONS OF THE AXONS TO THE SIMULATION
 
     if (n_centers == 0){
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, L, rho, l_mean, d_mean);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_%s_random_L%.1lf_h%.2lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, L, height, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename_simulation, "3D_axon_simulation/3D_axon_positions_%s_%s_agg_nc%d_s%.4f_L%.1lf_h%.2lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, height, rho, l_mean, d_mean);
     }
 
     if ((axon_simulation = fopen(filename_simulation, "w")) == NULL) {
@@ -140,10 +141,10 @@ int main(int argc, char *argv[]) {
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
 
     if (n_centers == 0){
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_%s_random_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, L, rho, l_mean, d_mean);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_%s_random_L%.1lf_h%.2lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, L, height, rho, l_mean, d_mean);
     }
     else{
-        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_%s_agg_nc%d_s%.4f_L%.1lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, rho, l_mean, d_mean);
+        sprintf(filename, "3D_created_networks/3D_adjacency_matrix_%s_%s_agg_nc%d_s%.4f_L%.1lf_h%.2lf_rho%.0f_l%.2f_d%.2f.txt", geometry, BC_type, n_centers, base_sigma, L, height, rho, l_mean, d_mean);
     }
 
 // ! FILENAME TO SAVE THE ADJACENCY MATRIX OF THE CREATED NETWORK
@@ -167,7 +168,7 @@ int main(int argc, char *argv[]) {
         
         double xmin = -L/2.0, xmax = L/2.0;
         double ymin = -L/2.0, ymax = L/2.0;
-        double zmin = -L/2.0, zmax = L/2.0;
+        double zmin = -height/2.0, zmax = height/2.0;
 
         fflush(stdout);
         double initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z;
@@ -238,7 +239,7 @@ int main(int argc, char *argv[]) {
         if (strcmp(BC_type, "PBC") == 0){
             PBC(&initial_segment_vector_x, L);
             PBC(&initial_segment_vector_y, L);
-            PBC(&initial_segment_vector_z, L);
+            PBC(&initial_segment_vector_z, height);
         }
         else{
             if (initial_segment_vector_x < xmin) initial_segment_vector_x = xmin;
@@ -301,7 +302,7 @@ int main(int argc, char *argv[]) {
                 for(int j = 0; j < N; j++){
                     if (i != j){
                     
-                            if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, dx, dy, dz)){
+                            if (new_axon_intersection_3D(X, Y, Z, dendrites_diameters, i, j, &initial_segment_vector_x, &initial_segment_vector_y, &initial_segment_vector_z, L, height, dx, dy, dz)){
                                 trials ++;
                                  // Connection probability alpha
                                 AdjMatrix_flat[i*N + j] += 1;
@@ -316,17 +317,24 @@ int main(int argc, char *argv[]) {
     
                 PBC(&end_segment_vector_x, L);
                 PBC(&end_segment_vector_y, L);
-                PBC(&end_segment_vector_z, L);
+                PBC(&end_segment_vector_z, height);
             }
             else if ((strcmp(geometry, "cube") == 0 ||
                     strcmp(geometry, "cubeBiased") == 0 ||
                     strcmp(geometry, "cubeLongRange") == 0)
                     && strcmp(BC_type, "SW") == 0){
                 sticky_walls3D(initial_segment_vector_x, initial_segment_vector_y, initial_segment_vector_z, 
-                                &dx, &dy, &dz, L, &end_segment_vector_x, &end_segment_vector_y, &end_segment_vector_z, X, Y, Z, 
+                                &dx, &dy, &dz, L, height, &end_segment_vector_x, &end_segment_vector_y, &end_segment_vector_z, X, Y, Z, 
                                 dendrites_diameters, i, N, AdjMatrix_flat, &trials, &links, axon_simulation, i, k);
             
-                if (dx*dx + dy*dy + dz*dz > 1e-15){
+                if (long_range_axon && end_segment_vector_x >= xmax - 1e-12) {
+                    initial_segment_vector_x = end_segment_vector_x;
+                    initial_segment_vector_y = end_segment_vector_y;
+                    initial_segment_vector_z = end_segment_vector_z;
+                    break;
+                }
+
+                if (!long_range_axon && dx*dx + dy*dy + dz*dz > 1e-15){
                     initial_angle_azi = atan2(dy, dx);
                     initial_angle_pol = acos(dz / sqrt(dx*dx + dy*dy + dz*dz));
                 }
@@ -337,7 +345,7 @@ int main(int argc, char *argv[]) {
                     initial_segment_vector_y,
                     initial_segment_vector_z,
                     &dx, &dy, &dz,
-                    L,
+                    L, height,
                     &end_segment_vector_x,
                     &end_segment_vector_y,
                     &end_segment_vector_z,
@@ -380,19 +388,32 @@ int main(int argc, char *argv[]) {
     printf("Acceptance ratio       = %.6f\n", (double)links / (double)trials);
 
     // Save adjacency matrix to file
-    FILE *adj_matrix_file;
-    if ((adj_matrix_file = fopen(filename, "w")) == NULL) {
+        // Save edge list to file
+    FILE *edge_file;
+    if ((edge_file = fopen(filename, "w")) == NULL) {
         printf("Error opening file %s\n", filename);
         exit(1);
     }
 
-    for(int i = 0; i < N; i++){
-        for(int j = 0; j < N; j++){
-            fprintf(adj_matrix_file, "%d ", AdjMatrix_flat[i*N + j]);
+    fprintf(edge_file, "source\ttarget\tn_intersections\n");
+
+    int unique_links = 0;
+
+    for(long i = 0; i < N; i++){
+        for(long j = 0; j < N; j++){
+
+            uint8_t w = AdjMatrix_flat[i*N + j];
+
+            if (w > 0){
+                fprintf(edge_file, "%ld\t%ld\t%u\n", i, j, (unsigned int)w);
+                unique_links++;
+            }
         }
-        fprintf(adj_matrix_file, "\n");
     }
-    fclose(adj_matrix_file);
+
+    fclose(edge_file);
+
+    printf("Unique directed links = %d\n", unique_links);
 
 
     free(X);

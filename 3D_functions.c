@@ -112,7 +112,7 @@ double min_image(double d, double L){
     return d;
 }
 
-bool new_axon_intersection_3D(double *x, double *y, double *z, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double *segment_vector_z, double L, double dx, double dy, double dz){
+bool new_axon_intersection_3D(double *x, double *y, double *z, double *dendrites_diameter, int origin_neuron, int target_neuron, double *segment_vector_x, double *segment_vector_y, double *segment_vector_z, double L, double height, double dx, double dy, double dz){
 
     double cx, cy, cz;
 
@@ -121,7 +121,7 @@ bool new_axon_intersection_3D(double *x, double *y, double *z, double *dendrites
     cz = z[target_neuron] - *segment_vector_z;
     cx = min_image(cx, L);
     cy = min_image(cy, L);
-    cz = min_image(cz, L);
+    cz = min_image(cz, height);
 
     double f_raw = (cx * dx + cy * dy + cz * dz) / (dx * dx + dy * dy + dz * dz);
     double f = f_raw;
@@ -195,14 +195,15 @@ bool new_axon_intersection_noPBC_3D(double cx, double cy, double cz, double dend
     // Distance from the closest point to the center of the sphere
     double ddx = cx - px;
     double ddy = cy - py;
+    double ddz = cz - pz;
 
     // Check if the distance is less than or equal to the radius of the sphere
-    return (ddx*ddx + ddy*ddy + (cz - pz)*(cz - pz) <= R*R);
+    return (ddx*ddx + ddy*ddy + ddz*ddz <= R*R);
 
 }
 
 void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vector_y, double initial_segment_vector_z, 
-                    double *dx, double *dy, double *dz, double L,
+                    double *dx, double *dy, double *dz, double L, double height,
                     double *end_segment_vector_x, double *end_segment_vector_y, double *end_segment_vector_z,
                     double *X, double *Y, double *Z, double *dendrites_diameters,
                     int i, int N_neurons, uint8_t *AdjMatrix_flat,
@@ -210,7 +211,7 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
 
     double xmin = -L/2.0, xmax = L/2.0;
     double ymin = -L/2.0, ymax = L/2.0;
-    double zmin = -L/2.0, zmax = L/2.0;
+    double zmin = -height/2.0, zmax = height/2.0;
     double eps = 1e-12;
 
     double x = initial_segment_vector_x;
@@ -308,9 +309,13 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
         // Ya está prácticamente en una cara/arista/esquina
         else if (s_hit < eps){
 
+            if (wall_type == 3){
+                remaining = 0.0;
+                break;
+            }
+
             if (wall_type == 1) ux = 0.0;
             else if (wall_type == 2) uy = 0.0;
-            else if (wall_type == 3) uz = 0.0;
 
             double norm_tan = sqrt(ux*ux + uy*uy + uz*uz);
 
@@ -378,12 +383,16 @@ void sticky_walls3D(double initial_segment_vector_x, double initial_segment_vect
         y = y_next;
         z = z_next;
 
-        // Si hemos tocado una cara y aún queda longitud, proyectar tangencialmente
+        // Si toca la tapa superior o inferior, se corta el crecimiento
         if (remaining > eps && s_hit != DBL_MAX){
+
+            if (wall_type == 3){
+                remaining = 0.0;
+                break;
+            }
 
             if (wall_type == 1) ux = 0.0;
             else if (wall_type == 2) uy = 0.0;
-            else if (wall_type == 3) uz = 0.0;
 
             double norm_tan = sqrt(ux*ux + uy*uy + uz*uz);
 
@@ -709,7 +718,7 @@ int simulate_izhikevich(
 
 int sticky_cylinder3D(double initial_x, double initial_y, double initial_z,
                       double *dx, double *dy, double *dz,
-                      double L,
+                      double L, double height,
                       double *end_x, double *end_y, double *end_z,
                       double *X, double *Y, double *Z,
                       double *dendrites_diameters,
@@ -722,8 +731,8 @@ int sticky_cylinder3D(double initial_x, double initial_y, double initial_z,
     double eps = 1e-12;
 
     double R = L / 2.0;
-    double zmin = -L / 2.0;
-    double zmax =  L / 2.0;
+    double zmin = -height / 2.0;
+    double zmax =  height / 2.0;
 
     double x = initial_x;
     double y = initial_y;
