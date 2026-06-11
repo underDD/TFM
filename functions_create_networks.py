@@ -111,7 +111,7 @@ def create_network2D(parameters2D, filename_neuron_params = None, sim_l = False,
 
     return output_filename
 # @njit
-def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints_c=False, show_prints_control=True, sim_number=0, new_sim=False):
+def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints_c=False, show_prints_control=False, sim_number=0, new_sim=False):
 
     if parameters2D["agg"] == 0:
         filename = f"2D_dynamics/2D_dynamics_{parameters2D['geometry']}_{parameters2D['BC_type']}_random_L{parameters2D['L']:.1f}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_d{parameters2D['d_mean']:.2f}_a{alpha:.2f}_exc{parametersDynamics['max_exc_weight']:.3f}_sim{sim_number}.txt"
@@ -136,7 +136,7 @@ def run_dynamics_2D(parametersDynamics, parameters2D, alpha, show_prints_c=False
             str(parametersDynamics["seed"]),
             str(sim_number),
             parameters2D["geometry"]
-        ], capture_output=False, text=False)
+        ], capture_output=True, text=True)
 
         if show_prints_c:
             print(result.stdout)
@@ -934,6 +934,7 @@ def modify_A_alpha2D(A, alpha, parameters2D, seed=None, new_sim = False, GC = Tr
         if GC:
             A_new = get_GC(A_new)
 
+   
     pd.DataFrame(A_new).to_csv(output_filename, sep=' ', index=False, header=False)
     A_check = load_A(output_filename)
 
@@ -1755,20 +1756,10 @@ def plot_full_panel(
     plt.show()
 
 
-def compile_c_codes():
+def compile_c_codes(show_prints_c = False):
     gcc = "C:/msys64/ucrt64/bin/gcc.exe"
 
-    subprocess.run([
-        gcc, 
-        "-O3",
-        "2D_create_network.c", 
-        "2D_functions.c",
-        "-o", 
-        "2D_create_network.exe",
-        "-lm"
-    ], check=True)
-
-    subprocess.run([
+    tune_positions = subprocess.run([
         gcc, 
         "-Wall", 
         "-O3",
@@ -1777,9 +1768,28 @@ def compile_c_codes():
         "-o", 
         "2D_tune_positions.exe",
         "-lm"
-    ], check=True)
+    ], check=True, capture_output=True)
 
-    subprocess.run([
+    if show_prints_c:
+        print(tune_positions.stdout)
+        print(tune_positions.stderr)
+
+    create_network = subprocess.run([
+        gcc, 
+        "-O3",
+        "2D_create_network.c", 
+        "2D_functions.c",
+        "-o", 
+        "2D_create_network.exe",
+        "-lm"
+    ], check=True, capture_output=True)
+
+    if show_prints_c:
+        print(create_network.stdout)
+        print(create_network.stderr)
+
+
+    dynamics = subprocess.run([
         gcc,
         "-O3",
         "2D_dynamics.c", 
@@ -1787,7 +1797,11 @@ def compile_c_codes():
         "-o", 
         "2D_dynamics.exe",
         "-lm"
-    ], check=True)
+    ], check=True, capture_output=True)
+
+    if show_prints_c:
+        print(dynamics.stdout)
+        print(dynamics.stderr)
 
 def compile_c_codes3D():
     gcc = "C:/msys64/ucrt64/bin/gcc.exe"

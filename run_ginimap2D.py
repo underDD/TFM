@@ -11,16 +11,21 @@ from numba import njit
 
 fcn.compile_c_codes()
 
+calibration_filename = "figures_TFM/data_for_figures/gini2D_n_grid13_calibration.txt"
+data = np.loadtxt(calibration_filename, skiprows=1)
+base_sigmas_calibration = data[:,1]
+gini_calibration = data[:, 0]
+
 n_chunks = 1
 chunk_id = int(sys.argv[1])
 
-base_sigmas_all = np.linspace(0.04, 0.6, 50)
-base_sigmas = np.array_split(base_sigmas_all, n_chunks)[chunk_id]
+base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
+print(f"Base sigmas to process in this chunk: {base_sigmas}")
 
-MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
-de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
+MAX_EXC_WEIGHT = np.linspace(2, 30.0, 50)
+# de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
 
-MAX_EXC_WEIGHT = np.arange(20+de, 30, de)
+# MAX_EXC_WEIGHT = np.arange(20+de, 30, de)
 
 GNA_mean = []
 GNA_var = []
@@ -28,19 +33,20 @@ GNA_fano = []
 
 
 parameters2D = {
-    "L": 3.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
-    "rho": 60, # Neuron density (neurons/mm^2)
+    "L": 2.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
+    "rho": 125, # Neuron density (neurons/mm^2)
     "soma_diameter": 0.015, # Diameter of the soma (mm)
     "d_mean": 0.15, # Dendritic tree diameter (mm) Gaussian distribution
     "d_sigma": 0.02, # Standard deviation of the dendritic tree diameter (mm)
-    "l_mean": 0.3, # Mean axon length (mm) Rayleigh distribution
+    "l_mean": 1.1, # Mean axon length (mm) Rayleigh distribution
     "segment_length": 0.01, # Segment length for axon growth (mm)
     "sigma_axon_angle": 0.1, # Standard deviation of the axon angle (radians)
     "agg": 1, # Control parameter for the aggregation of neurons
-    "n_centers": 20, # Number of centers for the aggregation of neurons
+    "n_centers": 10, # Number of centers for the aggregation of neurons
     "base_sigma": 0.8, # Base standard deviation for aggregation centers (mm)
     "BC_type": "SW",  # Boundary conditions type (PBC: Periodic Boundary Conditions, SW: Sticky Walls)
-    "geometry": "square" # Geometry of the domain (square or circle)
+    "geometry": "square", # Geometry of the domain (square or circle)
+    "seed": 0 # Random seed for reproducibility
 }
 
 alpha = 0.2
@@ -63,14 +69,15 @@ parametersDynamics = {
     "seed": 42
 }
 
-new_sim = False
+new_sim = True
 sims = 10
 
-
+cell_size = 0.15
+n_grid = int(parameters2D["L"] / cell_size)
 
 for sim in range(sims):
 
-    output_file = f"Gini_things/GNAmap_{parameters2D['geometry']}_{parameters2D['BC_type']}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_sim{sim}_ch{chunk_id}.txt"
+    output_file = f"GNA_map_vsGini/GNAmap_{parameters2D['geometry']}_{parameters2D['BC_type']}_rho{parameters2D['rho']:.0f}_l{parameters2D['l_mean']:.2f}_sim{sim}_ch{chunk_id}.txt"
     open(output_file, "w").close()  # Limpiar el archivo antes de escribir
     with open(output_file, "w") as f:
         f.write("base_sigma\tMAX_EXC_WEIGHT\tGini\tmean_peaks_height\tstd_peaks_height\tfano_factor\n")
@@ -80,8 +87,7 @@ for sim in range(sims):
         parameters2D["base_sigma"] = s
         filename_neuron_params = fcn.run_2D_tune_positions(parameters2D, new_sim=new_sim)
         filename_network_tries = fcn.create_network2D(parameters2D, new_sim=new_sim)
-        X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length =fcn.load_neuron_params(filename_neuron_params)
-        Gini = fcn.compute_spatial_gini(X, Y, parameters2D["L"], geometry=parameters2D["geometry"], n_grid=30)[0]
+        Gini = fcn.measure_gini2D(filename_neuron_params, parameters2D, n_grid)
 
         A, filename_adj = fcn.modify_A_alpha2D(
             fcn.load_A(filename_network_tries),
@@ -104,7 +110,6 @@ for sim in range(sims):
                 alpha,
                 sim_number=sim,
                 new_sim=new_sim, 
-                show_prints_control=False
             )
 
             firings_t, firings_i = fcn.load_firings(filename_dynamics)
@@ -133,6 +138,7 @@ for sim in range(sims):
                 f.write(f"{s:.4f}\t{e:.2f}\t{Gini:.6f}\t{mean_peaks_height:.6f}\t{std_peaks_height:.6f}\t{fano_factor:.6f}\n")
             
             # print(f"base_sigma: {s:.4f}, MAX_EXC_WEIGHT: {e:.2f}, Gini: {Gini:.6f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}")
+        print(f"Completada base_sigma: {s:.4f} para sim {sim}")
 
 # Le cuesta 10h
 # Mirar distribuciones de kIn con las dos condiciones periodicas de contorno
