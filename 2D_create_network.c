@@ -160,8 +160,9 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < N_neurons; i++){
         // printf("Creating connections for neuron %d/%d\r", i+1, N_neurons);
 
-        // ini_ran(seed + i*1000);  // semilla fija por neurona
-
+        if (seed != 0){
+            ini_ran(seed + i*1000);  // semilla fija por neurona
+        }
         fflush(stdout);
         double initial_segment_vector_x, initial_segment_vector_y;
         double initial_angle; // Initial angle of the axon (randomly distributed between 0 and 2*pi)

@@ -62,6 +62,9 @@ int main(int argc, char *argv[]) {
         ini_ran((int)time(NULL));
     }
 
+    sigma_rayleigh = l_mean*sqrt(2/PI); // Sigma parameter for Rayleigh distribution with given mean
+    l_sigma = sqrt((4 - PI)/2.0) * sigma_rayleigh; // Calculate standard deviation from sigma
+
 // !! FILENAME TO LOAD PARAMETERS AND NEURON CONFIGURATIONS
 
     if ((neurons_params = fopen(filename, "r")) == NULL) {
@@ -107,7 +110,11 @@ int main(int argc, char *argv[]) {
     axon_lengths = (double *)malloc(N * sizeof(double));
 
     for(int i = 0; i < N; i++){
-        fscanf(neurons_params, "%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n", &X[i], &Y[i], &Z[i], &somas[i], &dendrites_diameters[i], &axon_lengths[i]);
+        fscanf(neurons_params, "%lf\t%lf\t%lf\t%lf\t%lf\n", &X[i], &Y[i], &Z[i], &somas[i], &dendrites_diameters[i]);
+    }
+
+    for(int i = 0; i < N; i++){
+        axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
     }
 
     fclose(neurons_params);

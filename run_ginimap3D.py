@@ -9,19 +9,24 @@ import functions_create_networks as fcn
 importlib.reload(fcn)
 from numba import njit
 
-fcn.compile_c_codes3D()
+import inspect
+
+print(fcn.__file__)
+print(inspect.getsource(fcn.load_neuron_params_3D))
+
+# fcn.compile_c_codes3D()
 
 calibration_filename = "figures_TFM/data_for_figures/gini3D_n_grid13_calibration.txt"
 data = np.loadtxt(calibration_filename, skiprows=1)
 gini_calibration = data[:, 0]
 base_sigmas_calibration = data[:, 1]
 
-n_chunks = 1
+n_chunks = 4
 chunk_id = int(sys.argv[1])
 
 base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
 
-MAX_EXC_WEIGHT = np.linspace(2, 30.0, 50)
+MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
 # de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
 
 # MAX_EXC_WEIGHT = np.arange(20+de, 30, de)
@@ -30,7 +35,6 @@ GNA_mean = []
 GNA_var = []
 GNA_fano = []
 
-
 parameters3D = {
     "L": 2.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
     "height": 1.0, # Height of the cylinder domain (mm), only used if geometry is "cylinder"
@@ -38,7 +42,7 @@ parameters3D = {
     "soma_diameter": 0.015, # Diameter of the soma (mm)
     "d_mean": 0.15, # Dendritic tree diameter (mm) Gaussian distribution
     "d_sigma": 0.02, # Standard deviation of the dendritic tree diameter (mm)
-    "l_mean": 1.1, # Mean axon length (mm) Rayleigh distribution
+    "l_mean": 0.7, # Mean axon length (mm) Rayleigh distribution
     "segment_length": 0.01, # Segment length for axon growth (mm)
     "sigma_pol": 0.1, # Standard deviation of the axon angle (radians)
     "sigma_azi": 0.1, # Standard deviation of the azimuthal angle (radians)
@@ -46,7 +50,7 @@ parameters3D = {
     "n_centers": 112, # Number of centers for the aggregation of neurons
     "base_sigma": 0.04, # Base standard deviation for aggregation centers (mm)
     "BC_type": "SW",  # Boundary conditions type (PBC: Periodic Boundary Conditions, SW: Sticky Walls)
-    "geometry": "cube", # Geometry of the domain (cube or sphere)
+    "geometry": "cubeLongRange", # Geometry of the domain (cube or sphere)
     "seed": 0,
 }
 
@@ -87,13 +91,13 @@ for sim in range(sims):
         parameters3D["base_sigma"] = s
         filename_neuron_params = fcn.run_3D_tune_positions(parameters3D, new_sim=new_sim)
         filename_network_tries = fcn.create_network3D(parameters3D, new_sim=new_sim)
-        X,Y, Z, _,_,_ = fcn.load_neuron_params_3D(filename_neuron_params)
+        X,Y, Z, _,_ = fcn.load_neuron_params_3D(filename_neuron_params)
         Gini = fcn.compute_gini_3D(X, Y, Z, parameters3D["L"], parameters3D["height"], geometry=parameters3D["geometry"], cell_size = cell_size)
         M = fcn.load_A3D(filename_network_tries, N)
         A, filename_adj, nodes_GSCC = fcn.modify_A_alpha3D_fast(M, alpha, parameters3D=parameters3D, new_sim=True)
 
 
-        N = A.shape[0]
+        N_A = A.shape[0]
 
         for e in MAX_EXC_WEIGHT:
 
@@ -104,7 +108,9 @@ for sim in range(sims):
                 parametersDynamics,
                 parameters3D,
                 alpha,
-                new_sim=new_sim
+                new_sim=new_sim, 
+                show_prints_c = False, 
+                show_prints_control = False
             )
 
             firings_t, firings_i = fcn.load_firings(filename_dynamics)
@@ -112,12 +118,12 @@ for sim in range(sims):
             # print("N usado en Python:", N)
             # print("Máxima neurona en firings:", firings_i.max())
 
-            assert firings_i.max() <= N
+            assert firings_i.max() <= N_A
 
             GNA = fcn.compute_GNA_from_raster(
                     firings_t=firings_t,
                     firings_i=firings_i,
-                    N=N,
+                    N=N_A,
                     SIM_TIME=parametersDynamics["sim_time"],
                     W=25
                 )
@@ -132,7 +138,7 @@ for sim in range(sims):
             with open(output_file, "a") as f:
                 f.write(f"{s:.4f}\t{e:.2f}\t{Gini:.6f}\t{mean_peaks_height:.6f}\t{std_peaks_height:.6f}\t{fano_factor:.6f}\n")
             
-            # print(f"base_sigma: {s:.4f}, MAX_EXC_WEIGHT: {e:.2f}, Gini: {Gini:.6f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}")
+            print(f"base_sigma: {s:.4f}, MAX_EXC_WEIGHT: {e:.2f}, Gini: {Gini:.6f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}")
         print(f"Completada base_sigma: {s:.4f} para sim {sim}")
 
 # Le cuesta 10h

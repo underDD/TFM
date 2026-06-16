@@ -1,0 +1,1 @@
+sigma	exc_weight	clusF	clusA	clusF/clusA

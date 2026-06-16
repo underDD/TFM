@@ -344,7 +344,8 @@ def run_3D_tune_positions(parameters3D, show_prints_c = False, show_prints_contr
             str(parameters3D["n_centers"]),
             str(parameters3D["base_sigma"]),
             str(parameters3D["BC_type"]),
-            str(parameters3D["geometry"])
+            str(parameters3D["geometry"]), 
+            str(parameters3D["seed"])
         ], capture_output=True, text=True)
 
         if show_prints_c:
@@ -476,7 +477,7 @@ def create_network3D(parameters3D, show_prints_c = False, show_prints_control = 
 # @njit
 def load_neuron_params_3D(filename, nrows_skiped=1):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
-    return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4], data[:,5]
+    return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4]
 # @njit
 def neuron_map_gini3D(filename, parameters3D):
 
@@ -651,7 +652,9 @@ from pypalettes import load_cmap
 # @njit
 def load_neuron_params_3D(filename, nrows_skiped=1):
     data = np.loadtxt(filename, skiprows=nrows_skiped)
-    return data[:,0], data[:,1], data[:,2], data[:,3], data[:,4], data[:,5]
+    data = np.atleast_2d(data)
+
+    return data[:, 0], data[:, 1], data[:, 2], data[:, 3], data[:, 4]
 # @njit
 def load_A(path):
     A = np.loadtxt(path, dtype=np.uint8)
@@ -773,7 +776,7 @@ def find_GNA_peaks(GNA):
     peaks, properties = find_peaks(
         GNA,
         prominence=prom,  # prominencia mínima del pico
-        height = 0.05,
+        height = 0.08,
         distance=20
     )
 
@@ -1149,9 +1152,19 @@ def modify_A_alpha3D_fast(
     A_sparse.setdiag(0)
     A_sparse.eliminate_zeros()
 
+    # print("A full shape:", A_sparse.shape)
+    # print("A full degree:", A_sparse.sum(axis=0).mean())
+
+    A_new, nodes_GC = get_GC_from_A(A_sparse, connection=connection)
+
+    # print("A GC shape:", A_new.shape)
+    # print("A GC degree:", A_new.sum(axis=0).mean())
+    # print("GC fraction:", A_new.shape[0] / A_sparse.shape[0])
+
     # =====================================================
     # Componente gigante
     # =====================================================
+
 
     if GC:
         A_new, nodes_GC = get_GC_from_A(A_sparse, connection=connection)
@@ -1511,8 +1524,8 @@ def order_F_louvain_from_raster(
     all_neurons = np.arange(N)
     inactive = np.setdiff1d(all_neurons, active)
 
-    print(f"Neuronas activas: {len(active)}")
-    print(f"Neuronas inactivas: {len(inactive)}")
+    # print(f"Neuronas activas: {len(active)}")
+    # print(f"Neuronas inactivas: {len(inactive)}")
 
     W_active = F_binary[np.ix_(active, active)].copy()
     np.fill_diagonal(W_active, 0)
@@ -1756,87 +1769,101 @@ def plot_full_panel(
     plt.show()
 
 
-def compile_c_codes(show_prints_c = False):
+def compile_c_codes(show_prints_c=False):
+
     gcc = "C:/msys64/ucrt64/bin/gcc.exe"
 
-    tune_positions = subprocess.run([
-        gcc, 
-        "-Wall", 
+    common_flags = [
+        "-Wall",
         "-O3",
-        "2D_tune_positions.c", 
+        "-march=native",
+        "-ffast-math",
+        "-funroll-loops"
+    ]
+
+    tune_positions = subprocess.run([
+        gcc,
+        *common_flags,
+        "2D_tune_positions.c",
         "2D_functions.c",
-        "-o", 
+        "-o",
         "2D_tune_positions.exe",
         "-lm"
     ], check=True, capture_output=True)
 
     if show_prints_c:
-        print(tune_positions.stdout)
-        print(tune_positions.stderr)
+        print(tune_positions.stdout.decode())
+        print(tune_positions.stderr.decode())
 
     create_network = subprocess.run([
-        gcc, 
-        "-O3",
-        "2D_create_network.c", 
+        gcc,
+        *common_flags,
+        "2D_create_network.c",
         "2D_functions.c",
-        "-o", 
+        "-o",
         "2D_create_network.exe",
         "-lm"
     ], check=True, capture_output=True)
 
     if show_prints_c:
-        print(create_network.stdout)
-        print(create_network.stderr)
-
+        print(create_network.stdout.decode())
+        print(create_network.stderr.decode())
 
     dynamics = subprocess.run([
         gcc,
-        "-O3",
-        "2D_dynamics.c", 
+        *common_flags,
+        "2D_dynamics.c",
         "2D_functions.c",
-        "-o", 
+        "-o",
         "2D_dynamics.exe",
         "-lm"
     ], check=True, capture_output=True)
 
     if show_prints_c:
-        print(dynamics.stdout)
-        print(dynamics.stderr)
+        print(dynamics.stdout.decode())
+        print(dynamics.stderr.decode())
 
 def compile_c_codes3D():
+
     gcc = "C:/msys64/ucrt64/bin/gcc.exe"
 
-    create = subprocess.run([
-        gcc, 
+    common_flags = [
         "-O3",
-        "3D_create_network.c", 
+        "-march=native",
+        "-ffast-math",
+        "-funroll-loops"
+    ]
+
+    create = subprocess.run([
+        gcc,
+        *common_flags,
+        "3D_create_network.c",
         "3D_functions.c",
-        "-o", 
+        "-o",
         "3D_create_network.exe",
         "-lm"
-    ],check = True, capture_output=True)
+    ], check=True, capture_output=True)
 
     tune_positions = subprocess.run([
-        gcc, 
-        "-Wall", 
-        "-O3",
-        "3D_tune_positions.c", 
+        gcc,
+        "-Wall",
+        *common_flags,
+        "3D_tune_positions.c",
         "3D_functions.c",
-        "-o", 
+        "-o",
         "3D_tune_positions.exe",
         "-lm"
     ], check=True, capture_output=True)
 
     dynamics = subprocess.run([
         gcc,
-        "-O3",
-        "3D_dynamics.c", 
+        *common_flags,
+        "3D_dynamics.c",
         "3D_functions.c",
-        "-o", 
+        "-o",
         "3D_dynamics.exe",
         "-lm"
     ], check=True, capture_output=True)
-# @njit
 
 
 def get_GC(A):
@@ -1939,6 +1966,12 @@ def build_F_matrix(filename_dynamics, SIM_TIME=5000, N=1000):
     )
 
     firings_t, firings_i = np.loadtxt(filename_dynamics, skiprows=1, unpack=True)
+    firings_t, firings_i = load_firings(filename_dynamics)
+
+    # print("N =", N)
+    # print("min firings_i =", np.min(firings_i))
+    # print("max firings_i =", np.max(firings_i))
+    # print("unique active =", len(np.unique(firings_i)))
 
     F = np.corrcoef(M, rowvar=False)
 
@@ -2458,7 +2491,7 @@ def measure_gini2D(filename_neuron_params, parametersStructure, n_grid=20):
 
     return Gini
 
-def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, parametersStructure, order=None):
+def plot_spatial_distr_AND_adjacency(filename_neuron_params, A, parametersStructure, order=None):
     
     X, Y, Soma_Diameter, Dendrite_Diameter = load_neuron_params(filename_neuron_params)
 
@@ -2611,7 +2644,14 @@ def plot_spatial_distr_AND_adjacency(filename_neuron_params, filename_adj, param
     # Adjacency matrix
     # =====================================================
 
-    A = load_A(filename_adj)
+    # print("Dentro de plot:")
+    # print("filename_adj =", filename_adj)
+    # print("A.shape =", A.shape)
+
+    if order is not None:
+        print("len(order) =", len(order))
+        print("min(order) =", np.min(order))
+        print("max(order) =", np.max(order))
 
     if order is not None:
         A = A[np.ix_(order, order)]
@@ -2996,7 +3036,7 @@ def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim
     ax_raster.scatter(
         firings_t,
         firings_i,
-        s=0.2,
+        s=0.5,
         color=sunset2(0.1)
     )
 
@@ -3026,7 +3066,7 @@ def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim
     ax_gna.tick_params(axis='both', which='major',
                        labelsize=14, length=6, width=1.2)
     ax_gna.scatter(
-        peaks, GNA[peaks], c='red', s=20
+        peaks, GNA[peaks], c='red', s=15
     )
     ax_gna.set_xlim(0, xlim if xlim is not None else SIM_TIME)
 
@@ -3115,6 +3155,11 @@ def compute_network_metrics_from_GC(A_GC, N_total, seed=0):
     }
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+
+
 def plot_square_vs_circle_degree(
     file_square_paramsPBC, file_square_adjPBC,
     file_square_params, file_square_adj,
@@ -3140,11 +3185,6 @@ def plot_square_vs_circle_degree(
         Y = np.asarray(Y, dtype=float).reshape(-1)
 
         A = np.asarray(load_A(file_adj), dtype=float)
-
-        # print("\n---", title, "---")
-        # print("X:", X.shape)
-        # print("Y:", Y.shape)
-        # print("A:", A.shape)
 
         if A.ndim != 2:
             raise ValueError(f"{title}: A no es una matriz 2D. Tiene forma {A.shape}")
@@ -3178,17 +3218,55 @@ def plot_square_vs_circle_degree(
 
         k = np.asarray(k, dtype=float).reshape(-1)
 
-        # print("k:", k.shape)
+        # Grafo dirigido y no dirigido
+        G_dir = nx.from_numpy_array(A, create_using=nx.DiGraph)
+        G_undir = nx.from_numpy_array((A + A.T) > 0)
 
-        stored.append((title, X, Y, k, params))
+        clustering_local = np.array(list(nx.clustering(G_undir).values()))
+        clustering_mean = np.mean(clustering_local)
+
+        density = nx.density(G_dir)
+
+        if G_undir.number_of_edges() > 0:
+            global_eff = nx.global_efficiency(G_undir)
+        else:
+            global_eff = np.nan
+
+        stored.append({
+            "title": title,
+            "X": X,
+            "Y": Y,
+            "k": k,
+            "params": params,
+            "clustering_local": clustering_local,
+            "clustering_mean": clustering_mean,
+            "density": density,
+            "global_eff": global_eff
+        })
+
         all_degrees.append(k)
 
     all_degrees = np.concatenate(all_degrees)
     vmin, vmax = all_degrees.min(), all_degrees.max()
 
-    fig, axs = plt.subplots(1, 3, figsize=(12, 5), constrained_layout=True)
+    fig, axs = plt.subplots(
+        2, 3,
+        figsize=(14, 9),
+        constrained_layout=True,
+        height_ratios=[1.15, 1.0]
+    )
 
-    for ax, (title, X, Y, k, params) in zip(axs, stored):
+    # =========================
+    # FILA 1: MAPAS ESPACIALES
+    # =========================
+
+    for ax, data in zip(axs[0], stored):
+
+        title = data["title"]
+        X = data["X"]
+        Y = data["Y"]
+        k = data["k"]
+        params = data["params"]
 
         L = params["L"]
         geometry = params["geometry"]
@@ -3202,15 +3280,10 @@ def plot_square_vs_circle_degree(
             xmin = ymin = -L / 2
             xmax = ymax = L / 2
 
-        if k.max() > k.min():
+        if vmax > vmin:
             sizes = 15 + 90 * (k - vmin) / (vmax - vmin)
         else:
             sizes = np.ones(len(k)) * 40.0
-
-        sizes = np.asarray(sizes, dtype=float).reshape(-1)
-
-        # print("\nPLOT", title)
-        # print("len X:", len(X), "len Y:", len(Y), "len k:", len(k), "len sizes:", len(sizes))
 
         sc = ax.scatter(
             X,
@@ -3228,24 +3301,26 @@ def plot_square_vs_circle_degree(
         if geometry == "circle":
             circle = plt.Circle((0, 0), R, fill=False, color="black", lw=1.5)
             ax.add_patch(circle)
-            # ax.spines['top'].set_visible(False)
-            # ax.spines['right'].set_visible(False)
-            # ax.spines['left'].set_visible(False)
-            # ax.spines['bottom'].set_visible(False)
 
         ax.set_title(title, fontsize=18)
-        ax.set_xlabel("X (mm)", fontsize=16)
-        ax.set_ylabel("Y (mm)", fontsize=16)
+        ax.set_xlabel("X (mm)", fontsize=15)
+        ax.set_ylabel("Y (mm)", fontsize=15)
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin, ymax)
         ax.set_aspect("equal")
-        ax.tick_params(axis="both", labelsize=14)
+        ax.tick_params(axis="both", labelsize=13)
+
+        txt = (
+            rf"$\langle k \rangle = {np.mean(k):.2f}$" "\n"
+            rf"$C = {data['clustering_mean']:.3f}$" "\n"
+            rf"$E_{{glob}} = {data['global_eff']:.3f}$"
+        )
 
         ax.text(
             0.05, 0.95,
-            rf"$\langle k \rangle = {np.mean(k):.2f}$",
+            txt,
             transform=ax.transAxes,
-            fontsize=14,
+            fontsize=13,
             verticalalignment="top",
             bbox=dict(
                 boxstyle="square,pad=0.45",
@@ -3255,9 +3330,57 @@ def plot_square_vs_circle_degree(
             )
         )
 
-    cbar = fig.colorbar(sc, ax=axs, shrink=0.85)
+    cbar = fig.colorbar(sc, ax=axs[0], shrink=0.9)
     cbar.set_label(degree_label, fontsize=16)
     cbar.ax.tick_params(labelsize=13)
+
+    # =========================
+    # FILA 2: MÉTRICAS
+    # =========================
+
+    labels = [d["title"] for d in stored]
+
+    # 1) Distribución de grado
+    ax = axs[1, 0]
+
+    for data in stored:
+        k = data["k"]
+        values, counts = np.unique(k, return_counts=True)
+        pk = counts / counts.sum()
+
+        ax.plot(
+            values,
+            pk,
+            marker="o",
+            linestyle="-",
+            label=data["title"]
+        )
+
+    ax.set_xlabel(degree_label, fontsize=15)
+    ax.set_ylabel(r"$P(k)$", fontsize=15)
+    ax.set_title("Degree distribution", fontsize=16)
+    ax.tick_params(axis="both", labelsize=13)
+    ax.legend(fontsize=11)
+
+    # 2) Clustering medio
+    ax = axs[1, 1]
+
+    clustering_means = [d["clustering_mean"] for d in stored]
+
+    ax.bar(labels, clustering_means)
+    ax.set_ylabel(r"$\langle C \rangle$", fontsize=15)
+    ax.set_title("Mean clustering", fontsize=16)
+    ax.tick_params(axis="both", labelsize=13, rotation=25)
+
+    # 3) Eficiencia global
+    ax = axs[1, 2]
+
+    efficiencies = [d["global_eff"] for d in stored]
+
+    ax.bar(labels, efficiencies)
+    ax.set_ylabel(r"$E_{\mathrm{glob}}$", fontsize=15)
+    ax.set_title("Global efficiency", fontsize=16)
+    ax.tick_params(axis="both", labelsize=13, rotation=25)
 
     plt.show()
 import numpy as np
@@ -3265,24 +3388,42 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
+
+
 def plot_square_vs_circle_degree_smooth(
     file_square_paramsPBC, file_square_adjPBC,
     file_square_params, file_square_adj,
     file_circle_params, file_circle_adj,
     parameters_square, parameters_circle,
-    degree_type="mean",
+    degree_type="in",
     n_grid=250,
-    smooth_sigma=5.0
+    smooth_sigma=5.0,
+    dist_bins=60,
+    dist_smooth_sigma=2.0
 ):
 
     datasets = [
         ("Square PBC", file_square_paramsPBC, file_square_adjPBC, parameters_square),
-        ("Square", file_square_params, file_square_adj, parameters_square),
-        ("Circle", file_circle_params, file_circle_adj, parameters_circle)
+        ("Square SW", file_square_params, file_square_adj, parameters_square),
+        ("Circle SW", file_circle_params, file_circle_adj, parameters_circle)
     ]
 
     stored = []
     all_degrees = []
+
+    # =========================
+    # CARGA DE DATOS
+    # =========================
 
     for title, file_params, file_adj, params in datasets:
 
@@ -3310,35 +3451,88 @@ def plot_square_vs_circle_degree_smooth(
 
         if degree_type == "out":
             k = k_out
-            degree_label = "Out-degree"
+            degree_label = r"$k_{out}$"
         elif degree_type == "in":
             k = k_in
             degree_label = r"$k_{in}$"
         elif degree_type == "total":
             k = k_in + k_out
-            degree_label = "Total degree"
+            degree_label = r"$k$"
         elif degree_type == "mean":
             k = 0.5 * (k_in + k_out)
-            degree_label = "Mean degree"
+            degree_label = r"$\langle k \rangle_i$"
         else:
             raise ValueError("degree_type must be 'out', 'in', 'total' or 'mean'")
 
-        stored.append((title, X, Y, k, params))
+        # Red no dirigida para clustering y primeros vecinos
+        B = ((A + A.T) > 0).astype(int)
+        np.fill_diagonal(B, 0)
+
+        G_undir = nx.from_numpy_array(B)
+
+        clustering = np.array(list(nx.clustering(G_undir).values()))
+
+        # Grado in medio de los primeros vecinos
+        knn_in = np.full(len(k_in), np.nan)
+
+        for i in range(len(k_in)):
+            neigh = np.where(B[i] > 0)[0]
+            if len(neigh) > 0:
+                knn_in[i] = np.mean(k_in[neigh])
+
+        stored.append({
+            "title": title,
+            "X": X,
+            "Y": Y,
+            "k": k,
+            "k_in": k_in,
+            "knn_in": knn_in,
+            "clustering": clustering,
+            "params": params
+        })
+
         all_degrees.append(k)
 
     all_degrees = np.concatenate(all_degrees)
-    vmin, vmax = np.nanmin(all_degrees), np.nanmax(all_degrees)
 
-    fig, axs = plt.subplots(
-        1, 3,
-        figsize=(12, 5),
-        constrained_layout=True, 
-        sharey=False
+    # =========================
+    # FIGURA CON GRIDSPEC
+    # =========================
+
+    fig = plt.figure(figsize=(13.5, 8.5))
+
+    gs = fig.add_gridspec(
+        2, 4,
+        width_ratios=[1, 1, 1, 0.045],
+        height_ratios=[1, 1],
+        left=0.06,
+        right=0.94,
+        bottom=0.08,
+        top=0.96,
+        wspace=0.28,
+        hspace=0.22
     )
+
+    axs = np.empty((2, 3), dtype=object)
+
+    for i in range(3):
+        axs[0, i] = fig.add_subplot(gs[0, i])
+        axs[1, i] = fig.add_subplot(gs[1, i])
+
+    cax = fig.add_subplot(gs[0, 3])
 
     im = None
 
-    for ax, (title, X, Y, k, params) in zip(axs, stored):
+    # =========================
+    # FILA 1: MAPAS SMOOTH
+    # =========================
+
+    for j, (ax, data) in enumerate(zip(axs[0], stored)):
+
+        X = data["X"]
+        Y = data["Y"]
+        k = data["k"]
+        params = data["params"]
 
         L = params["L"]
         geometry = params["geometry"]
@@ -3352,10 +3546,6 @@ def plot_square_vs_circle_degree_smooth(
             xmin = ymin = -L / 2
             xmax = ymax = L / 2
 
-        # =========================
-        # HISTOGRAMA ESPACIAL
-        # =========================
-
         H_count, xedges, yedges = np.histogram2d(
             X, Y,
             bins=n_grid,
@@ -3367,10 +3557,6 @@ def plot_square_vs_circle_degree_smooth(
             bins=[xedges, yedges],
             weights=k
         )
-
-        # =========================
-        # SUAVIZADO GAUSSIANO
-        # =========================
 
         H_count_smooth = gaussian_filter(
             H_count,
@@ -3389,14 +3575,10 @@ def plot_square_vs_circle_degree_smooth(
         with np.errstate(divide="ignore", invalid="ignore"):
             Z = H_degree_smooth / H_count_smooth
 
-        Z[H_count_smooth < 1e-8] = np.nan
+        # Zonas sin neuronas: color mínimo del mapa
+        Z[H_count_smooth < 1e-3] = 0.0
 
-        # Transponer para que encaje con imshow
         Z = Z.T
-
-        # =========================
-        # MÁSCARA CIRCULAR
-        # =========================
 
         if geometry == "circle":
             xc = 0.5 * (xedges[:-1] + xedges[1:])
@@ -3406,11 +3588,9 @@ def plot_square_vs_circle_degree_smooth(
             mask_outside = XX**2 + YY**2 > R**2
             Z[mask_outside] = np.nan
 
-        # =========================
-        # PLOT
-        # =========================
         vmin = np.nanpercentile(Z, 2)
         vmax = np.nanpercentile(Z, 98)
+
         im = ax.imshow(
             Z,
             extent=[xmin, xmax, ymin, ymax],
@@ -3432,160 +3612,209 @@ def plot_square_vs_circle_degree_smooth(
             )
             ax.add_patch(circle)
             ax.set_frame_on(False)
-            
+
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal")
+
         ax.set_xticks([])
         ax.set_yticks([])
-        # ax.set_title(title, fontsize=18)
-        ax.set_xlabel("X (mm)", fontsize=24)
 
-        # Only plot Y label for the firt one
-        if ax == axs[0]:
-            ax.set_ylabel("Y (mm)", fontsize=24)
+        ax.set_xlabel("X (mm)", fontsize=22)
 
-        if ax == axs[0]:
-            ax.text(0.05, 0.95,"A)", transform=ax.transAxes, fontsize=24, verticalalignment="top", color="white", weight="bold")
-        if ax == axs[1]:
-            ax.text(0.05, 0.95,"B)", transform=ax.transAxes, fontsize=24, verticalalignment="top", color="white", weight="bold")
-        if ax == axs[2]:
-            ax.text(0.03, 0.95,"C)", transform=ax.transAxes, fontsize=24, verticalalignment="top", color="black", weight="bold")
-        ax.set_xlim(xmin, xmax)
-        ax.set_ylim(ymin, ymax)
-        ax.set_aspect("equal")
+        if j == 0:
+            ax.set_ylabel("Y (mm)", fontsize=22)
 
-        ax.tick_params(axis="both", labelsize=0)
-
-        # ax.text(
-        #     0.05, 0.95,
-        #     rf"$\langle k \rangle = {np.mean(k):.2f}$",
-        #     transform=ax.transAxes,
-        #     fontsize=14,
-        #     verticalalignment="top",
-        #     bbox=dict(
-        #         boxstyle="square,pad=0.45",
-        #         facecolor="white",
-        #         alpha=0.9,
-        #         edgecolor="none"
-        #     )
-        # )
-
-    cbar = fig.colorbar(im, ax=axs, shrink=0.6)
-
-    cbar.set_label(degree_label, fontsize=24)
-    cbar_ticks = [50, 75, 100, 125]
-    cbar.set_ticks(cbar_ticks)
-    cbar.ax.tick_params(labelsize=21)
-
-    plt.savefig("figures_TFM/degree_map.pdf", format="pdf", bbox_inches="tight")
-    plt.show()
-def plot_square_PBC_vs_SW_degree(
-    file_PBC_params, file_PBC_adj,
-    file_SW_params, file_SW_adj,
-    parameters_PBC, parameters_SW,
-    degree_type="mean"
- ):
-
-    datasets = [
-        ("PBC", file_PBC_params, file_PBC_adj, parameters_PBC),
-        ("Sticky walls", file_SW_params, file_SW_adj, parameters_SW)
-    ]
-
-    stored = []
-    all_degrees = []
-
-    for title, file_params, file_adj, params in datasets:
-
-        X, Y, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params(file_params)
-
-        X = np.asarray(X, dtype=float).reshape(-1)
-        Y = np.asarray(Y, dtype=float).reshape(-1)
-
-        A = np.asarray(load_A(file_adj), dtype=float)
-
-        if A.shape[0] != A.shape[1]:
-            raise ValueError(f"{title}: A no es cuadrada. Tiene forma {A.shape}")
-
-        if len(X) != A.shape[0]:
-            raise ValueError(
-                f"{title}: número de neuronas no coincide. "
-                f"len(X)={len(X)}, len(Y)={len(Y)}, A.shape={A.shape}"
-            )
-
-        k_out = np.asarray(A.sum(axis=1), dtype=float).reshape(-1)
-        k_in = np.asarray(A.sum(axis=0), dtype=float).reshape(-1)
-
-        if degree_type == "out":
-            k = k_out
-            degree_label = "Out-degree"
-        elif degree_type == "in":
-            k = k_in
-            degree_label = "In-degree"
-        elif degree_type == "total":
-            k = k_in + k_out
-            degree_label = "Total degree"
-        elif degree_type == "mean":
-            k = 0.5 * (k_in + k_out)
-            degree_label = "Mean degree"
-        else:
-            raise ValueError("degree_type must be 'out', 'in', 'total' or 'mean'")
-
-        stored.append((title, X, Y, k, params))
-        all_degrees.append(k)
-
-    all_degrees = np.concatenate(all_degrees)
-    vmin, vmax = all_degrees.min(), all_degrees.max()
-
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
-
-    for ax, (title, X, Y, k, params) in zip(axs, stored):
-
-        L = params["L"]
-
-        xmin = ymin = -L / 2
-        xmax = ymax = L / 2
-
-        if k.max() > k.min():
-            sizes = 15 + 90 * (k - vmin) / (vmax - vmin)
-        else:
-            sizes = np.ones(len(k)) * 40.0
-
-        sc = ax.scatter(
-            X, Y,
-            c=k,
-            s=sizes,
-            cmap="viridis",
-            vmin=vmin,
-            vmax=vmax,
-            alpha=0.85,
-            edgecolors="black",
-            linewidths=0.25
-        )
-
-        ax.set_title(title, fontsize=18)
-        ax.set_xlabel("X (mm)", fontsize=16)
-        ax.set_ylabel("Y (mm)", fontsize=16)
-
-        ax.set_xlim(xmin, xmax)
-        ax.set_ylim(ymin, ymax)
-        ax.set_aspect("equal")
-
-        ax.tick_params(axis="both", labelsize=14)
+        panel_labels = ["A)", "B)", "C)"]
+        panel_colors = ["white", "white", "black"]
 
         ax.text(
-            0.05, 0.95,
-            rf"$\langle k \rangle = {np.mean(k):.2f}$",
+            0.85, 0.95,
+            panel_labels[j],
             transform=ax.transAxes,
-            fontsize=14,
+            fontsize=24,
             verticalalignment="top",
-            bbox=dict(
-                boxstyle="square,pad=0.45",
-                facecolor="white",
-                alpha=0.9,
-                edgecolor="none"
+            color=panel_colors[j],
+            weight="bold"
+        )
+
+    cbar = fig.colorbar(im, cax=cax)
+    cbar.set_label(degree_label, fontsize=24)
+    cbar.ax.tick_params(labelsize=20)
+
+    # =========================
+    # FUNCIÓN AUXILIAR
+    # =========================
+
+    colors = plt.cm.viridis(np.linspace(0.15, 0.85, len(stored)))
+
+    def plot_smooth_distribution(ax, values, label, color):
+
+        values = np.asarray(values, dtype=float)
+        values = values[np.isfinite(values)]
+
+        hist, edges = np.histogram(
+            values,
+            bins=dist_bins,
+            density=True
+        )
+
+        centers = 0.5 * (edges[:-1] + edges[1:])
+        hist_smooth = gaussian_filter1d(hist, sigma=dist_smooth_sigma)
+
+        ax.plot(
+            centers,
+            hist_smooth,
+            linewidth=2.5,
+            label=label,
+            color=color
+        )
+
+        ax.fill_between(
+            centers,
+            hist_smooth,
+            alpha=0.25,
+            color=color
+        )
+
+    # =========================
+    # FILA 2: DISTRIBUCIONES
+    # =========================
+
+    # 1) Distribución de grado
+    ax = axs[1, 0]
+
+    for data, color in zip(stored, colors):
+        ax_label = rf"{data['title']}"
+
+        plot_smooth_distribution(
+            ax,
+            data["k"],
+            ax_label,
+            color
+        )
+
+    ax.set_xlabel(degree_label, fontsize=22)
+    ax.set_ylabel(r"$P(k)$", fontsize=22)
+    ax.tick_params(axis="both", labelsize=20)
+    ax.legend(fontsize=16, frameon=False)
+    # 2) Grado medio de los vecinos en función del grado del nodo
+    ax = axs[1, 1]
+
+    for data, color in zip(stored, colors):
+
+        k_node = np.asarray(data["k"], dtype=float)
+        knn = np.asarray(data["knn_in"], dtype=float)
+
+        mask = np.isfinite(k_node) & np.isfinite(knn)
+        k_node = k_node[mask]
+        knn = knn[mask]
+
+        df_knn = pd.DataFrame({
+            "k": k_node,
+            "knn": knn
+        })
+
+        df_knn = (
+            df_knn
+            .groupby("k", as_index=False)
+            .agg(
+                knn_mean=("knn", "mean"),
+                knn_std=("knn", "std"),
+                n=("knn", "count")
             )
         )
 
-    cbar = fig.colorbar(sc, ax=axs, shrink=0.85)
-    cbar.set_label(degree_label, fontsize=16)
-    cbar.ax.tick_params(labelsize=13)
+        df_knn = df_knn[df_knn["n"] >= 3]
+
+        k_vals = df_knn["k"].to_numpy()
+        knn_mean = df_knn["knn_mean"].to_numpy()
+
+        if len(knn_mean) > 3:
+            knn_mean = gaussian_filter1d(
+                knn_mean,
+                sigma=1.2
+            )
+
+        ax.plot(
+            k_vals,
+            knn_mean,
+            linewidth=2.5,
+            color=color,
+            label=data["title"]
+        )
+
+    ax.set_xlabel(degree_label, fontsize=22)
+    ax.set_ylabel(r"$\langle k_{nn}^{in}(k) \rangle$", fontsize=22, labelpad = -5)
+    ax.tick_params(axis="both", labelsize=20)
+
+    # 3) Distribución de clustering
+    ax = axs[1, 2]
+
+    for data, color in zip(stored, colors):
+
+        mean_C = np.nanmean(data["clustering"])
+
+        ax_label = (
+            rf"{data['title']} "
+            rf"$\langle C \rangle = {mean_C:.3f}$"
+        )
+
+        plot_smooth_distribution(
+            ax,
+            data["clustering"],
+            ax_label,
+            color
+        )
+
+    ax.set_xlabel(r"$C$", fontsize=22)
+    ax.set_ylabel(r"$P(C)$", fontsize=22)
+    ax.tick_params(axis="both", labelsize=20)
+    # ax.legend(fontsize=11, frameon=False)
+
+        # =========================
+    # LEYENDA ÚNICA
+    # =========================
+
+    axs[1, 0].legend(
+        fontsize=11,
+        frameon=False,
+        loc="upper right"
+    )
+
+    axs[1, 1].legend().remove()
+    axs[1, 2].legend().remove()
+
+    # =========================
+    # ALINEAR FILA INFERIOR CON FILA SUPERIOR
+    # =========================
+
+    fig.canvas.draw()
+
+    # Separación extra entre gráficas inferiores
+    gap = 0.08
+
+    pos0 = axs[0, 0].get_position()
+    pos2 = axs[0, 2].get_position()
+    pos_bot = axs[1, 0].get_position()
+
+    x0 = pos0.x0
+    x1 = pos2.x1
+
+    width = (x1 - x0 - 2 * gap) / 3
+
+    for j in range(3):
+        axs[1, j].set_position([
+            x0 + j * (width + gap),
+            pos_bot.y0,
+            width,
+            pos_bot.height
+        ])
+
+    plt.savefig(
+        "figures_TFM/degree_map_with_distributions.pdf",
+        format="pdf",
+        bbox_inches="tight"
+    )
 
     plt.show()

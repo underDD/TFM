@@ -2,35 +2,34 @@
 
 int main(int argc, char *argv[]) {
 
-    ini_ran(time(NULL));
-
+    
     double *X, *Y, *Z;
-
+    
     double L, rho; int N;
     double soma_diameter;
     double d_mean, d_sigma;
     double l_mean, l_sigma, sigma_rayleigh;
     double segment_length, sigma_pol, sigma_azi;
     double R, height;
-
+    
     double *somas;
     double *dendrites_diameters;
     double *axon_lengths;
-
+    
     char filename[MAX_STRING_LENGTH];
     char BC_type[MAX_STRING_LENGTH];
     char geometry[MAX_STRING_LENGTH];
-
+    
     int agg; // 0 no aggragation, 1 aggregation
     int n_centers;
     double base_sigma;
-
-    if (argc != 16) {
+    
+    if (argc != 17) {
         printf("Uso:\n");
-        printf("%s L h rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi agg n_centers base_sigma geometry BC_type\n", argv[0]);
+        printf("%s L h rho soma_diameter d_mean d_sigma l_mean segment_length sigma_pol sigma_azi agg n_centers base_sigma geometry BC_type seed\n", argv[0]);
         return 1;
     }
- 
+    
     L = atof(argv[1]);
     height = atof(argv[2]);
     rho = atof(argv[3]);
@@ -46,7 +45,13 @@ int main(int argc, char *argv[]) {
     base_sigma = atof(argv[13]);
     strcpy(BC_type, argv[14]);
     strcpy(geometry, argv[15]);
-    
+    int seed = atoi(argv[16]);
+    if (seed != 0){
+        ini_ran(seed);
+    }
+    else{
+        ini_ran(time(NULL));
+    }
 
     if (strcmp(geometry, "cube") == 0 || strcmp(geometry, "cubeBiased") == 0 || strcmp(geometry, "cubeLongRange") == 0){
         N = (int)(rho * L * L * height);
@@ -95,7 +100,7 @@ int main(int argc, char *argv[]) {
         printf("sigma_pol = %.3lf\n", sigma_pol);
         printf("sigma_azi = %.3lf\n", sigma_azi);
 
-        fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
+        fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\n");
 
         double margin = soma_diameter / 2.0; // Margin to avoid placing neurons too close to the walls
         bool overlap;
@@ -146,8 +151,8 @@ int main(int argc, char *argv[]) {
                 dendrites_diameters[i] = d_mean + d_sigma * box_muller();
             }while(dendrites_diameters[i] <= 0.0);
 
-            axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
-            fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], Z[i], somas[i], dendrites_diameters[i], axon_lengths[i]);
+            // axon_lengths[i] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
+            fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[i], Y[i], Z[i], somas[i], dendrites_diameters[i]);
             // printf("Placed neuron %d/%d\r", i+1, N);
             fflush(stdout);
         }
@@ -191,7 +196,7 @@ int main(int argc, char *argv[]) {
         printf("base_sigma = %.4lf\n", base_sigma);
         printf("Output file: %s", filename);
 
-        fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\tAxon_Length\n");
+        fprintf(neurons_params, "X\tY\tZ\tSoma_Diameter\tDendrite_Diameter\n");
 
         int idx = 0;
 
@@ -304,8 +309,8 @@ int main(int argc, char *argv[]) {
                     dendrites_diameters[idx] = d_mean + d_sigma * box_muller();
                 }while(dendrites_diameters[idx] <= 0.0);
 
-                axon_lengths[idx] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
-                fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\t%f\n", X[idx], Y[idx], Z[idx], somas[idx], dendrites_diameters[idx], axon_lengths[idx]);
+                // axon_lengths[idx] = inverse_cumulative_rayleigh(randomInPR(0.0, 1.0), sigma_rayleigh);
+                fprintf(neurons_params, "%f\t%f\t%f\t%f\t%f\n", X[idx], Y[idx], Z[idx], somas[idx], dendrites_diameters[idx]);
                 idx++;
                 // printf("Placed neuron %d/%d\r", idx + 1, N);
                 fflush(stdout);

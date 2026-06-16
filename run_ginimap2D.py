@@ -22,7 +22,7 @@ chunk_id = int(sys.argv[1])
 base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
 print(f"Base sigmas to process in this chunk: {base_sigmas}")
 
-MAX_EXC_WEIGHT = np.linspace(2, 30.0, 50)
+MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
 # de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
 
 # MAX_EXC_WEIGHT = np.arange(20+de, 30, de)
@@ -38,14 +38,14 @@ parameters2D = {
     "soma_diameter": 0.015, # Diameter of the soma (mm)
     "d_mean": 0.15, # Dendritic tree diameter (mm) Gaussian distribution
     "d_sigma": 0.02, # Standard deviation of the dendritic tree diameter (mm)
-    "l_mean": 1.1, # Mean axon length (mm) Rayleigh distribution
+    "l_mean": 0.7, # Mean axon length (mm) Rayleigh distribution
     "segment_length": 0.01, # Segment length for axon growth (mm)
     "sigma_axon_angle": 0.1, # Standard deviation of the axon angle (radians)
     "agg": 1, # Control parameter for the aggregation of neurons
     "n_centers": 10, # Number of centers for the aggregation of neurons
     "base_sigma": 0.8, # Base standard deviation for aggregation centers (mm)
     "BC_type": "SW",  # Boundary conditions type (PBC: Periodic Boundary Conditions, SW: Sticky Walls)
-    "geometry": "square", # Geometry of the domain (square or circle)
+    "geometry": "squareLongRange", # Geometry of the domain (square or circle)
     "seed": 0 # Random seed for reproducibility
 }
 
