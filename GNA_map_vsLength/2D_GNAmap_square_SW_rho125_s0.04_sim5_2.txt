@@ -1,0 +1,1 @@
+axonal_length	MAX_EXC_WEIGHT	mean_peaks_height	std_peaks_height	fano_factor	GC_fraction	mean_degree
