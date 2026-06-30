@@ -9,7 +9,11 @@ import functions_create_networks as fcn
 importlib.reload(fcn)
 from numba import njit
 
-fcn.compile_c_codes()
+import warnings
+
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+# fcn.compile_c_codes()
 
 calibration_filename = "figures_TFM/data_for_figures/gini2D_n_grid13_calibration.txt"
 data = np.loadtxt(calibration_filename, skiprows=1)
@@ -19,10 +23,12 @@ gini_calibration = data[:, 0]
 n_chunks = 1
 chunk_id = int(sys.argv[1])
 
-base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
-print(f"Base sigmas to process in this chunk: {base_sigmas}")
+# base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
+# print(f"Base sigmas to process in this chunk: {base_sigmas}")
 
-MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
+base_sigmas = np.linspace(0.03, 0.7, 50)
+base_sigmas = np.array_split(base_sigmas, n_chunks)[chunk_id]
+MAX_EXC_WEIGHT = np.linspace(5, 30.0, 50)
 # de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
 
 # MAX_EXC_WEIGHT = np.arange(20+de, 30, de)
@@ -31,21 +37,20 @@ GNA_mean = []
 GNA_var = []
 GNA_fano = []
 
-
 parameters2D = {
-    "L": 2.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
-    "rho": 125, # Neuron density (neurons/mm^2)
+    "L": 3.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
+    "rho": 71, # Neuron density (neurons/mm^2)
     "soma_diameter": 0.015, # Diameter of the soma (mm)
     "d_mean": 0.15, # Dendritic tree diameter (mm) Gaussian distribution
     "d_sigma": 0.02, # Standard deviation of the dendritic tree diameter (mm)
-    "l_mean": 0.7, # Mean axon length (mm) Rayleigh distribution
+    "l_mean": 1.0, # Mean axon length (mm) Rayleigh distribution
     "segment_length": 0.01, # Segment length for axon growth (mm)
     "sigma_axon_angle": 0.1, # Standard deviation of the axon angle (radians)
     "agg": 1, # Control parameter for the aggregation of neurons
     "n_centers": 10, # Number of centers for the aggregation of neurons
     "base_sigma": 0.8, # Base standard deviation for aggregation centers (mm)
     "BC_type": "SW",  # Boundary conditions type (PBC: Periodic Boundary Conditions, SW: Sticky Walls)
-    "geometry": "squareLongRange", # Geometry of the domain (square or circle)
+    "geometry": "square", # Geometry of the domain (square or circle)
     "seed": 0 # Random seed for reproducibility
 }
 
@@ -62,7 +67,7 @@ elif parameters2D["geometry"] == "circle":
 
 # print(f"Number of neurons: {N}")
 parametersDynamics = {
-    "max_exc_weight": 8,
+    "max_exc_weight": 18,
     "max_inh_weight": 0.5,
     "noise_max": 3,
     "sim_time": 10000,
@@ -72,7 +77,7 @@ parametersDynamics = {
 new_sim = True
 sims = 10
 
-cell_size = 0.15
+cell_size = 0.2
 n_grid = int(parameters2D["L"] / cell_size)
 
 for sim in range(sims):
@@ -129,6 +134,14 @@ for sim in range(sims):
             
             peaks, peak_heights, mean_peaks_height, std_peaks_height = fcn.find_GNA_peaks(GNA)
             fano_factor = std_peaks_height**2 / mean_peaks_height if mean_peaks_height > 0 else 0.0
+
+            # inter_func_corr = fcn.compute_interfunctional_community_GNA_correlation(
+            #     filename_dynamics=filename_dynamics,
+            #     SIM_TIME=parametersDynamics["sim_time"],
+            #     N=N,
+            #     W=25,
+            #     min_community_size=5
+            # )
 
             GNA_mean.append(GNA.mean())
             GNA_var.append(GNA.var())

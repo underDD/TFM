@@ -776,7 +776,7 @@ def find_GNA_peaks(GNA):
     peaks, properties = find_peaks(
         GNA,
         prominence=prom,  # prominencia mínima del pico
-        height = 0.08,
+        height = 0.1,
         distance=20
     )
 
@@ -790,6 +790,73 @@ def find_GNA_peaks(GNA):
         std_peak_height = peak_heights.std()
     
     return peaks, peak_heights, mean_peak_height, std_peak_height
+
+# import numpy as np
+# from scipy.signal import find_peaks, savgol_filter
+
+# def find_GNA_peaks(
+#     GNA,
+#     smooth=True,
+#     window_length=21,
+#     polyorder=3,
+#     prominence_factor=0.5,
+#     height_factor=2.0,
+#     distance=20,
+#     min_height=0.02
+# ):
+#     GNA = np.asarray(GNA)
+
+#     # -------------------------
+#     # Suavizado opcional
+#     # -------------------------
+#     if smooth:
+#         wl = window_length
+
+#         # window_length debe ser impar y menor que len(GNA)
+#         if wl >= len(GNA):
+#             wl = len(GNA) - 1
+#         if wl % 2 == 0:
+#             wl -= 1
+
+#         if wl > polyorder:
+#             GNA_smooth = savgol_filter(GNA, window_length=wl, polyorder=polyorder)
+#         else:
+#             GNA_smooth = GNA.copy()
+#     else:
+#         GNA_smooth = GNA.copy()
+
+#     # -------------------------
+#     # Nivel basal y ruido
+#     # -------------------------
+#     baseline = np.median(GNA_smooth)
+#     noise = np.std(GNA_smooth - baseline)
+
+#     prominence = prominence_factor * noise
+#     height = max(baseline + height_factor * noise, min_height)
+
+#     # -------------------------
+#     # Detección de picos
+#     # -------------------------
+#     peaks, properties = find_peaks(
+#         GNA_smooth,
+#         prominence=prominence,
+#         height=height,
+#         distance=distance
+#     )
+
+#     # -------------------------
+#     # Alturas medidas en la GNA original
+#     # -------------------------
+#     peak_heights = GNA[peaks]
+
+#     if len(peak_heights) == 0:
+#         mean_peak_height = 0.0
+#         std_peak_height = 0.0
+#     else:
+#         mean_peak_height = np.mean(peak_heights)
+#         std_peak_height = np.std(peak_heights)
+
+#     return peaks, peak_heights, mean_peak_height, std_peak_height, GNA_smooth
 # def compute_GNA_from_raster(firings_t, firings_i, N, SIM_TIME, W=25, indices_are_1_based=True):
 #     """
 #     Calcula la actividad global de red (GNA) como:
@@ -1509,23 +1576,101 @@ def binarize_functional_matrix(F, percentile=90):
     np.fill_diagonal(F_binary, 0)
 
     return F_binary, threshold
+def build_F_for_roc(filename_dynamics, SIM_TIME=5000, N=1000):
+    M, times = build_temporal_neuron_series(
+        filename_dynamics,
+        time_window=25,
+        SIM_TIME=SIM_TIME,
+        N=N
+    )
 
+    F = np.corrcoef(M, rowvar=False)
+    F = np.nan_to_num(F, nan=0.0)
+
+    np.fill_diagonal(F, 0)
+
+    return F
 # @njit
-def order_F_louvain_from_raster(
-    F,
-    F_binary,
-    firings_i,
-    seed=0
-):
+# def order_F_louvain_from_raster(
+#     F,
+#     F_binary,
+#     firings_i,
+#     seed=0
+# ):
+#     rng = np.random.default_rng(seed)
+#     N = F.shape[0]
+
+#     active = np.unique(firings_i.astype(int) - 1)
+#     all_neurons = np.arange(N)
+#     inactive = np.setdiff1d(all_neurons, active)
+
+#     # print(f"Neuronas activas: {len(active)}")
+#     # print(f"Neuronas inactivas: {len(inactive)}")
+
+#     W_active = F_binary[np.ix_(active, active)].copy()
+#     np.fill_diagonal(W_active, 0)
+
+#     G = nx.from_numpy_array(W_active)
+
+#     communities = nx.community.louvain_communities(
+#         G,
+#         weight="weight",
+#         resolution=1.0,
+#         seed=seed
+#     )
+
+#     communities = sorted(communities, key=len, reverse=True)
+
+#     degree = np.sum(W_active, axis=1)
+
+#     order_active_local = []
+
+#     for comm in communities:
+#         comm = list(comm)
+
+#         comm_sorted = sorted(
+#             comm,
+#             key=lambda i: degree[i],
+#             reverse=True
+#         )
+
+#         order_active_local.extend(comm_sorted)
+
+#     order_active_local = np.array(order_active_local)
+#     order_active = active[order_active_local]
+
+#     final_order = np.empty(N, dtype=int)
+
+#     inactive_positions = rng.choice(
+#         N,
+#         size=len(inactive),
+#         replace=False
+#     )
+
+#     mask_inactive = np.zeros(N, dtype=bool)
+#     mask_inactive[inactive_positions] = True
+
+#     final_order[mask_inactive] = rng.permutation(inactive)
+#     final_order[~mask_inactive] = order_active
+
+#     F_ordered = F[np.ix_(final_order, final_order)]
+#     np.fill_diagonal(F_ordered, 0)
+
+#     return F_ordered, final_order, communities
+
+def order_F_louvain_from_raster(F, F_binary, firings_i, seed=0):
+
     rng = np.random.default_rng(seed)
     N = F.shape[0]
 
-    active = np.unique(firings_i.astype(int) - 1)
+    firings_i = np.asarray(firings_i, dtype=int) - 1
+
+    valid = (firings_i >= 0) & (firings_i < N)
+    firings_i = firings_i[valid]
+
+    active = np.unique(firings_i)
     all_neurons = np.arange(N)
     inactive = np.setdiff1d(all_neurons, active)
-
-    # print(f"Neuronas activas: {len(active)}")
-    # print(f"Neuronas inactivas: {len(inactive)}")
 
     W_active = F_binary[np.ix_(active, active)].copy()
     np.fill_diagonal(W_active, 0)
@@ -1577,8 +1722,6 @@ def order_F_louvain_from_raster(
     np.fill_diagonal(F_ordered, 0)
 
     return F_ordered, final_order, communities
-
-
 # @njit
 def rewire_directed_fast_inplace(A, n_rewires):
     N = A.shape[0]
@@ -1957,25 +2100,34 @@ def plot_degree_distribution(k_vals_F, pk_F, k_vals_rw, pk_rw, k_vals_A, pk_A, s
 
     plt.show()
 
-def build_F_matrix(filename_dynamics, SIM_TIME=5000, N=1000):
+def build_F_matrix(
+    filename_dynamics,
+    SIM_TIME=5000,
+    N=1000,
+    time_window=25,
+    percentile=90,
+    threshold=None
+):
     M, times = build_temporal_neuron_series(
         filename_dynamics,
-        time_window=25,
+        time_window=time_window,
         SIM_TIME=SIM_TIME,
         N=N
     )
 
-    firings_t, firings_i = np.loadtxt(filename_dynamics, skiprows=1, unpack=True)
     firings_t, firings_i = load_firings(filename_dynamics)
 
-    # print("N =", N)
-    # print("min firings_i =", np.min(firings_i))
-    # print("max firings_i =", np.max(firings_i))
-    # print("unique active =", len(np.unique(firings_i)))
-
     F = np.corrcoef(M, rowvar=False)
+    F = np.nan_to_num(F, nan=0.0)
 
-    F_binary, threshold = binarize_functional_matrix(F, percentile=90)
+    if threshold is None:
+        F_binary, threshold = binarize_functional_matrix(
+            F,
+            percentile=percentile
+        )
+    else:
+        F_binary = (np.abs(F) >= threshold).astype(int)
+        np.fill_diagonal(F_binary, 0)
 
     F_ordered, order, communities = order_F_louvain_from_raster(
         F,
@@ -2029,7 +2181,7 @@ def properties_of_network(A, directed=True):
     properties['clustering_coefficient'] = nx.average_clustering(G.to_undirected())
     properties['average_path_length'] = nx.average_shortest_path_length(G) if nx.is_connected(G.to_undirected()) else np.inf
     properties['degree_assortativity'] = nx.degree_assortativity_coefficient(G)
-    properties['modularity'] = None  # Requires community detection
+    properties['modularity'] = nx.algorithms.community.modularity(G, nx.algorithms.community.greedy_modularity_communities(G.to_undirected()))
 
     return properties
 
@@ -2185,7 +2337,7 @@ def plot_spatial_distr_AND_adjacency_3D(
     slice_thickness=0.14
 ):
     
-    X, Y, Z, Soma_Diameter, Dendrite_Diameter, Axon_Length = load_neuron_params_3D(filename_neuron_params)
+    X, Y, Z, Soma_Diameter, Dendrite_Diameter = load_neuron_params_3D(filename_neuron_params)
 
     L = parametersStructure["L"]
     geometry = parametersStructure["geometry"]
@@ -2398,20 +2550,20 @@ def plot_spatial_distr_AND_adjacency_3D(
     ax1.set_box_aspect([L, L, parametersStructure["height"]])
     ax1.tick_params(axis='both', which='major', labelsize=12)
 
-    ax1.text2D(
-        0.05, 0.95,
-        rf"$\Lambda_{{3D}} = {Gini_3D:.2f}$" + "\n" +
-        rf"$\langle \Lambda_{{slice}} \rangle = {Gini_slice_mean:.2f} \pm {Gini_slice_std:.2f}$",
-        transform=ax1.transAxes,
-        fontsize=14,
-        verticalalignment='top',
-        bbox=dict(
-            boxstyle="square,pad=0.55",
-            facecolor="white",
-            alpha=0.9,
-            edgecolor="none"
-        )
-    )
+    # ax1.text2D(
+    #     0.05, 0.95,
+    #     rf"$\Lambda_{{3D}} = {Gini_3D:.2f}$" + "\n" +
+    #     rf"$\langle \Lambda_{{slice}} \rangle = {Gini_slice_mean:.2f} \pm {Gini_slice_std:.2f}$",
+    #     transform=ax1.transAxes,
+    #     fontsize=14,
+    #     verticalalignment='top',
+    #     bbox=dict(
+    #         boxstyle="square,pad=0.55",
+    #         facecolor="white",
+    #         alpha=0.9,
+    #         edgecolor="none"
+    #     )
+    # )
 
     # =====================================================
     # Adjacency matrix
@@ -2436,6 +2588,7 @@ def plot_spatial_distr_AND_adjacency_3D(
     ax2.tick_params(axis='both', which='major', labelsize=16)
 
     plt.tight_layout()
+    plt.savefig("spatial_distribution_and_adjacency_3D.png", dpi=600, bbox_inches="tight")
     plt.show()
 
     return Gini_3D, Gini_slice_mean, Gini_slice_std
@@ -2503,7 +2656,7 @@ def plot_spatial_distr_AND_adjacency(filename_neuron_params, A, parametersStruct
 
     # n_grid = int(parametersStructure["L"]/parametersStructure["soma_diameter"])
     
-    cell_size = 0.15 # mm
+    cell_size = 0.2 # mm
     n_grid = int(np.round(L / cell_size))
 
     R = L / np.sqrt(np.pi)
@@ -2981,7 +3134,7 @@ def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim
 
     firings_t, firings_i = load_firings(filename_dynamics)
 
-    GNA = compute_GNA_from_raster(firings_t, firings_i, N = N, SIM_TIME=SIM_TIME, W = 25)
+    GNA = compute_GNA_from_raster(firings_t, firings_i, N = N, SIM_TIME=SIM_TIME, W = 10)
 
     sunset2 = load_cmap('Sunset2', cmap_type='continuous')
 
@@ -3060,7 +3213,8 @@ def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim
         color=sunset2(0.1)
     )
 
-    peaks, peak_heights, mean_peak_height, std_peak_height = find_GNA_peaks(GNA)
+    peaks, peak_heights, mean_peak_height, std_peak_height= find_GNA_peaks(GNA)
+
     ax_gna.set_xlabel("Time (s)", fontsize=18)
     ax_gna.set_ylabel("GNA", fontsize=18)
     ax_gna.tick_params(axis='both', which='major',
@@ -3072,7 +3226,8 @@ def plot_F_rusterGNA(filename_dynamics, F, order, SIM_TIME = 10000, N=1000, xlim
 
     # Opcional: limitar ventana temporal
     # ax_gna.set_xlim(0, 2)
-
+    print(f"Mean peak height: {mean_peak_height:.4f}, Std peak height: {std_peak_height:.4f}")
+    print(f"Fano factor: {std_peak_height**2 / mean_peak_height:.4f}")
     plt.tight_layout()
     plt.show()
 
@@ -3818,3 +3973,84 @@ def plot_square_vs_circle_degree_smooth(
     )
 
     plt.show()
+
+
+import numpy as np
+
+def interfunctional_community_GNA_correlation(
+    filename_dynamics,
+    SIM_TIME,
+    N,
+    W=25,
+    min_community_size=5
+):
+    # -------------------------
+    # 1. Build functional matrix and communities
+    # -------------------------
+    F, F_binary, F_ordered, order, communities = build_F_matrix(
+        filename_dynamics,
+        SIM_TIME=SIM_TIME,
+        N=N
+    )
+
+    communities = [
+        np.array(list(c), dtype=int)
+        for c in communities
+        if len(c) >= min_community_size
+    ]
+
+    if len(communities) < 2:
+        return np.nan
+
+    # -------------------------
+    # 2. Load raster
+    # -------------------------
+    firings_t, firings_i = load_firings(filename_dynamics)
+
+    firings_t = np.asarray(firings_t, dtype=int)
+    firings_i = np.asarray(firings_i, dtype=int) - 1  # 1-based -> 0-based
+
+    # -------------------------
+    # 3. Build binary spike matrix M
+    # -------------------------
+    n_bins = int(np.ceil(SIM_TIME / W))
+    M = np.zeros((n_bins, N), dtype=np.uint8)
+
+    bins = (firings_t // W).astype(int)
+
+    valid = (
+        (bins >= 0) & (bins < n_bins) &
+        (firings_i >= 0) & (firings_i < N)
+    )
+
+    M[bins[valid], firings_i[valid]] = 1
+
+    # -------------------------
+    # 4. Community GNA traces
+    # -------------------------
+    community_GNA = []
+
+    for comm in communities:
+        trace = M[:, comm].sum(axis=1) / len(comm)
+        community_GNA.append(trace)
+
+    community_GNA = np.vstack(community_GNA)
+
+    # Remove constant communities
+    stds = community_GNA.std(axis=1)
+    active = stds > 1e-12
+    community_GNA = community_GNA[active]
+
+    if community_GNA.shape[0] < 2:
+        return np.nan
+
+    # -------------------------
+    # 5. Correlation between functional-community GNA traces
+    # -------------------------
+    C = np.corrcoef(community_GNA)
+
+    mask = np.triu(np.ones(C.shape, dtype=bool), k=1)
+
+    inter_func_corr = np.nanmean(C[mask])
+
+    return inter_func_corr

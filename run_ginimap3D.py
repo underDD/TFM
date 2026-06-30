@@ -9,10 +9,10 @@ import functions_create_networks as fcn
 importlib.reload(fcn)
 from numba import njit
 
-import inspect
+# import inspect
 
-print(fcn.__file__)
-print(inspect.getsource(fcn.load_neuron_params_3D))
+# print(fcn.__file__)
+# print(inspect.getsource(fcn.load_neuron_params_3D))
 
 # fcn.compile_c_codes3D()
 
@@ -24,9 +24,11 @@ base_sigmas_calibration = data[:, 1]
 n_chunks = 4
 chunk_id = int(sys.argv[1])
 
-base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
+# base_sigmas = np.array_split(base_sigmas_calibration, n_chunks)[chunk_id]
 
-MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
+base_sigmas = np.linspace(0.03, 0.7, 50)
+base_sigmas = np.array_split(base_sigmas, n_chunks)[chunk_id]
+MAX_EXC_WEIGHT = np.linspace(5, 30.0, 50)
 # de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
 
 # MAX_EXC_WEIGHT = np.arange(20+de, 30, de)
@@ -36,21 +38,21 @@ GNA_var = []
 GNA_fano = []
 
 parameters3D = {
-    "L": 2.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
+    "L": 3.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
     "height": 1.0, # Height of the cylinder domain (mm), only used if geometry is "cylinder"
-    "rho": 1400, # Neuron density (neurons/mm^2)
+    "rho": 600, # Neuron density (neurons/mm^2)
     "soma_diameter": 0.015, # Diameter of the soma (mm)
     "d_mean": 0.15, # Dendritic tree diameter (mm) Gaussian distribution
     "d_sigma": 0.02, # Standard deviation of the dendritic tree diameter (mm)
-    "l_mean": 0.7, # Mean axon length (mm) Rayleigh distribution
+    "l_mean": 1, # Mean axon length (mm) Rayleigh distribution
     "segment_length": 0.01, # Segment length for axon growth (mm)
     "sigma_pol": 0.1, # Standard deviation of the axon angle (radians)
     "sigma_azi": 0.1, # Standard deviation of the azimuthal angle (radians)
     "agg": 1, # Control parameter for the aggregation of neurons
-    "n_centers": 112, # Number of centers for the aggregation of neurons
+    "n_centers": 80, # Number of centers for the aggregation of neurons
     "base_sigma": 0.04, # Base standard deviation for aggregation centers (mm)
     "BC_type": "SW",  # Boundary conditions type (PBC: Periodic Boundary Conditions, SW: Sticky Walls)
-    "geometry": "cubeLongRange", # Geometry of the domain (cube or sphere)
+    "geometry": "cube", # Geometry of the domain (cube or sphere)
     "seed": 0,
 }
 
@@ -74,14 +76,14 @@ parametersDynamics = {
 }
 
 new_sim = True
-sims = 10
+sims = 1
 
-cell_size = 0.15
+cell_size = 0.2
 n_grid = int(parameters3D["L"] / cell_size)
 
 for sim in range(sims):
 
-    output_file = f"GNA_map_vsGini/3D_GNAmap_{parameters3D['geometry']}_{parameters3D['BC_type']}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_sim{sim}_ch{chunk_id}.txt"
+    output_file = f"GNA_map_vsGini/3D_GNAmap_{parameters3D['geometry']}_{parameters3D['BC_type']}_rho{parameters3D['rho']:.0f}_l{parameters3D['l_mean']:.2f}_sim{sim+2}_ch{chunk_id}.txt"
     open(output_file, "w").close()  # Limpiar el archivo antes de escribir
     with open(output_file, "w") as f:
         f.write("base_sigma\tMAX_EXC_WEIGHT\tGini\tmean_peaks_height\tstd_peaks_height\tfano_factor\n")

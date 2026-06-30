@@ -20,7 +20,7 @@ base_sigmas_calibration = data[:,1]
 axonal_lengths = np.linspace(0.1, 1.2, 50)
 axonal_lengths = np.array_split(axonal_lengths, n_chunks)[chunk_id]
 
-base_sigmas = [base_sigmas_calibration[-1]]
+base_sigmas = [base_sigmas_calibration[0]]
 print(f"Base sigmas to process in this chunk: {base_sigmas}")
 
 MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
@@ -149,6 +149,6 @@ for sim in range(sims):
                 with open(output_file, "a") as f:
                     f.write(f"{l:.2f}\t{e:.2f}\t{mean_peaks_height:.6f}\t{std_peaks_height:.6f}\t{fano_factor:.6f}\t{GC_fraction:.6f}\t{mean_degree_in:.2f}\n")
                 
-                print(f"base_sigma: {s:.2f}, axonal_length: {l:.2f}, MAX_EXC_WEIGHT: {e:.2f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}, GC_fraction: {GC_fraction:.6f}, mean_degree_in: {mean_degree_in:.2f}, mean_degree_full: {mean_degree_full:.2f}")
+                # print(f"base_sigma: {s:.2f}, axonal_length: {l:.2f}, MAX_EXC_WEIGHT: {e:.2f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}, GC_fraction: {GC_fraction:.6f}, mean_degree_in: {mean_degree_in:.2f}, mean_degree_full: {mean_degree_full:.2f}")
 
     print(f"Finished simulation {sim+1}/{sims}")

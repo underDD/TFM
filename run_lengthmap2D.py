@@ -12,7 +12,7 @@ import sys
 n_chunks = 1
 chunk_id = int(sys.argv[1])
 
-fcn.compile_c_codes()
+# fcn.compile_c_codes()
 
 calibration_filename = "figures_TFM/data_for_figures/gini2D_n_grid13_calibration.txt"
 data = np.loadtxt(calibration_filename, skiprows=1)
@@ -20,10 +20,10 @@ base_sigmas_calibration = data[:,1]
 axonal_lengths = np.linspace(0.1, 1.2, 50)
 axonal_lengths = np.array_split(axonal_lengths, n_chunks)[chunk_id]
 
-base_sigmas = [base_sigmas_calibration[-1]]
+base_sigmas = [base_sigmas_calibration[0]]
 print(f"Base sigmas to process in this chunk: {base_sigmas}")
 
-MAX_EXC_WEIGHT = np.linspace(2, 20.0, 50)
+MAX_EXC_WEIGHT = np.linspace(2, 30.0, 50)
 # de = MAX_EXC_WEIGHT[1] - MAX_EXC_WEIGHT[0]
 # MAX_EXC_WEIGHT = np.arange(2, 30, de) 
 
@@ -32,17 +32,17 @@ GNA_var = []
 GNA_fano = []
 
 parameters2D = {
-    "L": 2.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
-    "rho": 125, # Neuron density (neurons/mm^2)
+    "L": 3.0, # Length of the square domain (mm) or diameter of the circular domain (mm)
+    "rho": 71, # Neuron density (neurons/mm^2)
     "soma_diameter": 0.015, # Diameter of the soma (mm)
     "d_mean": 0.15, # Dendritic tree diameter (mm) Gaussian distribution
     "d_sigma": 0.02, # Standard deviation of the dendritic tree diameter (mm)
-    "l_mean": 1.1, # Mean axon length (mm) Rayleigh distribution
+    "l_mean": 1., # Mean axon length (mm) Rayleigh distribution
     "segment_length": 0.01, # Segment length for axon growth (mm)
     "sigma_axon_angle": 0.1, # Standard deviation of the axon angle (radians)
     "agg": 1, # Control parameter for the aggregation of neurons
     "n_centers": 10, # Number of centers for the aggregation of neurons
-    "base_sigma": 0.8, # Base standard deviation for aggregation centers (mm)
+    "base_sigma": 0.03, # Base standard deviation for aggregation centers (mm)
     "BC_type": "SW",  # Boundary conditions type (PBC: Periodic Boundary Conditions, SW: Sticky Walls)
     "geometry": "square", # Geometry of the domain (square or circle)
     "seed": 12345 # Random seed for reproducibility
@@ -74,7 +74,7 @@ sims = 5
 for sim in range(sims):
 
     for s in base_sigmas:
-        parameters2D["base_sigma"] = s
+        parameters2D["base_sigma"] = 0.7
         parameters2D["seed"] = 12345 + sim*1000  # Update seed for each simulation
         filename_neuron_params = fcn.run_2D_tune_positions(parameters2D, new_sim=True)
         
@@ -135,6 +135,6 @@ for sim in range(sims):
                 with open(output_file, "a") as f:
                     f.write(f"{l:.2f}\t{e:.2f}\t{mean_peaks_height:.6f}\t{std_peaks_height:.6f}\t{fano_factor:.6f}\t{GC_fraction:.6f}\t{mean_degree_in:.2f}\n")
                 
-                print(f"base_sigma: {s:.2f}, axonal_length: {l:.2f}, MAX_EXC_WEIGHT: {e:.2f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}, GC_fraction: {GC_fraction:.6f}, mean_degree_in: {mean_degree_in:.2f}")
+                # print(f"base_sigma: {s:.2f}, axonal_length: {l:.2f}, MAX_EXC_WEIGHT: {e:.2f}, mean_peaks_height: {mean_peaks_height:.6f}, std_peaks_height: {std_peaks_height:.6f}, fano_factor: {fano_factor:.6f}, GC_fraction: {GC_fraction:.6f}, mean_degree_in: {mean_degree_in:.2f}")
 
     print(f"Finished simulation {sim+1}/{sims}")

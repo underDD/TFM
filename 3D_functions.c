@@ -510,18 +510,18 @@ void build_weight_matrix(
     double max_exc_weight,
     double max_inh_weight
 ) {
-    for (int i = 0; i < N; i++) { // Para cada neurona i, asignamos pesos a sus conexiones salientes
-        for (int j = 0; j < N; j++) {
+    for (int target = 0; target < N; target++) {
+        for (int source = 0; source < N; source++) {
+
             double w;
-            
-            // Las primeras Ne neuronas son excitatorias, las últimas Ni son inhibitorias
-            if (j < Ne) { // Si la neurona j es excitatoria, el peso es positivo y se asigna un valor aleatorio entre 0 y max_exc_weight
+
+            if (source < Ne) {
                 w = max_exc_weight * randomInPR(0.0, 1.0);
-            } else { // Si la neurona j es inhibitoria, el peso es negativo y se asigna un valor aleatorio entre -max_inh_weight y 0
+            } else {
                 w = -max_inh_weight * randomInPR(0.0, 1.0);
             }
 
-            S[i*N + j] = ((double)A[i*N + j]) * w;
+            S[target*N + source] = ((double)A[source*N + target]) * w;
         }
     }
 }
